@@ -9,19 +9,19 @@ import (
 	"github.com/ooyeku/grav-orm/pkg/config"
 )
 
-// Define the DatabaseManager struct
-type DatabaseManager struct {
+// DBLifecycleManager is a struct that manages the lifecycle of the database
+type DBLifecycleManager struct {
 	// Add fields if necessary
 	config *config.Config
 }
 
-func NewDatabaseManager(config *config.Config) *DatabaseManager {
-	return &DatabaseManager{
+func NewDBLifecycleManager(config *config.Config) *DBLifecycleManager {
+	return &DBLifecycleManager{
 		config: config,
 	}
 }
 
-func (dm *DatabaseManager) BuildDatabaseImage() error {
+func (dm *DBLifecycleManager) BuildDatabaseImage() error {
 	cmd := exec.Command("/bin/bash", "internal/database/build.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -38,7 +38,7 @@ func (dm *DatabaseManager) BuildDatabaseImage() error {
 	return nil
 }
 
-func (dm *DatabaseManager) StartDatabaseContainer() error {
+func (dm *DBLifecycleManager) StartDatabaseContainer() error {
 	cmd := exec.Command("/bin/bash", "internal/database/up.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -55,7 +55,7 @@ func (dm *DatabaseManager) StartDatabaseContainer() error {
 	return nil
 }
 
-func (dm *DatabaseManager) StopDatabaseContainer() error {
+func (dm *DBLifecycleManager) StopDatabaseContainer() error {
 	cmd := exec.Command("/bin/bash", "internal/database/down.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
@@ -72,7 +72,7 @@ func (dm *DatabaseManager) StopDatabaseContainer() error {
 	return nil
 }
 
-func (dm *DatabaseManager) RemoveDatabaseContainer() error {
+func (dm *DBLifecycleManager) RemoveDatabaseContainer() error {
 	cmd := exec.Command("/bin/bash", "internal/database/remove.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
