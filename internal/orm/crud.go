@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ooyeku/grav-orm/internal/model"
+	"github.com/ooyeku/grav-lsm/internal/model"
 )
 
 // CRUD provides basic CRUD operations for models

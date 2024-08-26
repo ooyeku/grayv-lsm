@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ooyeku/grav-orm/pkg/config"
+	"github.com/ooyeku/grav-lsm/pkg/config"
 )
 
 func PromptDatabaseConfig() config.DatabaseConfig {

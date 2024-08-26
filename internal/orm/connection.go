@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	_ "github.com/lib/pq"
-	"github.com/ooyeku/grav-orm/pkg/config"
+	"github.com/ooyeku/grav-lsm/pkg/config"
 )
 
 type Connection struct {

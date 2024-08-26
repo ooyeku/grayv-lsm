@@ -11,7 +11,7 @@ import (
 const modelTemplate = `package models
 
 import (
-	"github.com/ooyeku/grav-orm/internal/model"
+	"github.com/ooyeku/grav-lsm/internal/model"
 )
 
 type {{.Name}} struct {

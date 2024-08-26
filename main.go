@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/ooyeku/grav-orm/cmd"
+	"github.com/ooyeku/grav-lsm/cmd"
 )
 
 func main() {

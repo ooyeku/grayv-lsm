@@ -6,7 +6,7 @@ import (
 	"log"
 	"os/exec"
 
-	"github.com/ooyeku/grav-orm/pkg/config"
+	"github.com/ooyeku/grav-lsm/pkg/config"
 )
 
 // DBLifecycleManager is responsible for managing the lifecycle of a database.
