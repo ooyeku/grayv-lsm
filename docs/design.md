@@ -1,53 +1,40 @@
 # Grav-ORM Project Structure
 
-```
-grav-orm/
-├── cmd/
-│   ├── root.go
-│   ├── database/
-│   │   ├── create.go
-│   │   ├── configure.go
-│   │   ├── migrate.go
-│   │   └── seed.go
-│   ├── model/
-│   │   ├── create.go
-│   │   └── update.go
-│   └── orm/
-│       ├── connect.go
-│       └── query.go
-├── internal/
-│   ├── database/
-│   │   ├── lifecycle.go
-│   │   ├── migration.go
-│   │   └── seeder.go
-│   ├── docker/
-│   │   └── dockerizer.go
-│   ├── model/
-│   │   └── model.go
-│   └── orm/
-│       ├── connection.go
-│       ├── query.go
-│       └── crud.go
-├── pkg/
-│   └── config/
-│       └── config.go
-├── migrations/
-├── seeds/
-├── go.mod
-├── go.sum
-└── main.go
-```
-
-# Main Components
+## Main Components
 
 1. CLI Application (cmd/)
     - Implement commands for database lifecycle management
     - Implement commands for ORM operations
+---------------------------------------------------------------------------------------------------------------------------
+### 'db' cmd package
+Example:
+```
+grav-orm db build
+grav-orm db remove
+grav-orm db start
+grav-orm db status
+grav-orm db stop
+```
 
+The 'db' cmd package is responsible for managing the database lifecycle. It includes commands for creating, configuring, migrating, and seeding the database.
+1. 'build' command: Builds the database instance
+2. 'remove' command: Removes the database instance
+3. 'start' command: Starts the database instance
+4. 'status' command: Checks the status of the database instance
+5. 'stop' command: Stops the database instance
+---------------------------------------------------------------------------------------------------------------------------
 2. Internal Packages (internal/)
-    - Database lifecycle management
-    - Docker integration
+    - Database
+      - lsm (lifecycle management)
+      - migration
+      - seeder
+    - Model
+      - model
+      - generator
     - ORM core functionality
+        - connection
+        - query
+        - crud
 
 3. Public Packages (pkg/)
     - Configuration management
@@ -56,13 +43,7 @@ grav-orm/
     - Entry point for the CLI application
 
 5. Migrations and Seeds
-    - Directories to store migration and seed files
-----------------------------------------------------------------------------------------------------------------------------
-The `migrations` and `seeds` directories are important components in database management for your ORM system. They serve specific purposes in maintaining and populating your database. Let me explain each:
-
-1. Migrations Directory:
-
-The `migrations` directory is used to store database migration files. Migrations are a way to manage changes to your database schema over time.
+    - The `migrations` directory is used to store database migration files. Migrations are a way to manage changes to your database schema over time.
 
 
 

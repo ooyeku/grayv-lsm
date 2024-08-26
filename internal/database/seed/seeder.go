@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -28,7 +28,7 @@ func NewSeeder(db *sql.DB) *Seeder {
 
 // LoadSeeds loads all seed files from the specified directory
 func (s *Seeder) LoadSeeds(dir string) error {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return fmt.Errorf("failed to read seeds directory: %w", err)
 	}
@@ -83,7 +83,7 @@ func (s *Seeder) executeSeed(seed *Seed) error {
 
 // parseSeedFile reads and parses a seed file
 func parseSeedFile(filename string) (*Seed, error) {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
