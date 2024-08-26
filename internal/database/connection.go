@@ -24,3 +24,8 @@ func NewConnection(cfg *config.DatabaseConfig) (*Connection, error) {
 
 	return &Connection{db: db}, nil
 }
+
+// Close closes the database connection
+func (c *Connection) Close() error {
+	return c.db.Close()
+}

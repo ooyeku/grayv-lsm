@@ -12,13 +12,13 @@ source ./internal/database/config.sh
 echo "Starting the build process for the database Docker image..."
 
 # Check if Dockerfile exists
-if [ ! -f ./internal/database/Dockerfile ]; then
+if [ ! -f ./internal/database/lsm/Dockerfile ]; then
   echo "Dockerfile not found!"
   exit 1
 fi
 
 # Build the Docker image
-docker build -f ./internal/database/Dockerfile -t gravorm-db --build-arg DB_USER=$DB_USER --build-arg DB_PASSWORD=$DB_PASSWORD --build-arg DB_NAME=$DB_NAME .
+docker build -f ./internal/database/lsm/Dockerfile -t gravorm-db --build-arg DB_USER=$DB_USER --build-arg DB_PASSWORD=$DB_PASSWORD --build-arg DB_NAME=$DB_NAME .
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then

@@ -1,4 +1,4 @@
-package database
+package lsm
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ func NewDBLifecycleManager(config *config.Config) *DBLifecycleManager {
 }
 
 func (dm *DBLifecycleManager) BuildDatabaseImage() error {
-	cmd := exec.Command("/bin/bash", "internal/database/build.sh")
+	cmd := exec.Command("/bin/bash", "internal/database/lsm/build.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -39,7 +39,7 @@ func (dm *DBLifecycleManager) BuildDatabaseImage() error {
 }
 
 func (dm *DBLifecycleManager) StartDatabaseContainer() error {
-	cmd := exec.Command("/bin/bash", "internal/database/up.sh")
+	cmd := exec.Command("/bin/bash", "internal/database/lsm/up.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -56,7 +56,7 @@ func (dm *DBLifecycleManager) StartDatabaseContainer() error {
 }
 
 func (dm *DBLifecycleManager) StopDatabaseContainer() error {
-	cmd := exec.Command("/bin/bash", "internal/database/down.sh")
+	cmd := exec.Command("/bin/bash", "internal/database/lsm/down.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
@@ -73,7 +73,7 @@ func (dm *DBLifecycleManager) StopDatabaseContainer() error {
 }
 
 func (dm *DBLifecycleManager) RemoveDatabaseContainer() error {
-	cmd := exec.Command("/bin/bash", "internal/database/remove.sh")
+	cmd := exec.Command("/bin/bash", "internal/database/lsm/remove.sh")
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out

@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/ooyeku/grav-orm/internal/database"
+	database "github.com/ooyeku/grav-orm/internal/database/lsm"
 	"github.com/ooyeku/grav-orm/pkg/config"
 	"github.com/spf13/cobra"
 	"os/exec"
