@@ -11,6 +11,7 @@ import (
 	"github.com/ooyeku/grav-lsm/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
 var dbManager *lsm.DBLifecycleManager
@@ -87,12 +88,36 @@ var removeCmd = &cobra.Command{
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Check the health of the database Docker container",
+	Short: "Check the health and status of the database",
 	Run: func(cmd *cobra.Command, args []string) {
-		_, err := dbManager.GetStatus()
+		status, err := dbManager.GetStatus()
 		if err != nil {
 			log.WithError(err).Error("Error checking database status")
 			return
+		}
+
+		if strings.Contains(status, "Container is running") {
+			conn, err := orm.NewConnection(&cfg.Database)
+			if err != nil {
+				log.WithError(err).Error("Error connecting to database")
+				return
+			}
+			defer conn.Close()
+
+			metrics, err := conn.GetDatabaseMetrics()
+			if err != nil {
+				log.WithError(err).Error("Error fetching database metrics")
+				return
+			}
+
+			log.Info("Database Metrics:")
+			log.Infof("- Number of tables: %d", metrics.TableCount)
+			log.Infof("- Database size: %s", metrics.DatabaseSize)
+			log.Infof("- Active connections: %d", metrics.ActiveConnections)
+			log.Infof("- Uptime: %s", metrics.Uptime)
+			log.Infof("- Transactions (commits/rollbacks): %d/%d", metrics.Commits, metrics.Rollbacks)
+			log.Infof("- Cache hit ratio: %.2f%%", metrics.CacheHitRatio)
+			log.Infof("- Slow queries (last hour): %d", metrics.SlowQueryCount)
 		}
 	},
 }

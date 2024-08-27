@@ -9,11 +9,15 @@
 ### 'db' cmd package
 Example:
 ```
-grav-orm db build
-grav-orm db remove
-grav-orm db start
-grav-orm db status
-grav-orm db stop
+grav-lsm db build
+grav-lsm db remove
+grav-lsm db start
+grav-lsm db status
+grav-lsm db stop
+grav-lsm db seed
+grav-lsm db migrate
+grav-lsm db rollback
+grav-lsm db list-tables
 ```
 
 The 'db' cmd package is responsible for managing the database lifecycle. It includes commands for creating, configuring, migrating, and seeding the database.
@@ -27,7 +31,7 @@ The 'db' cmd package is responsible for managing the database lifecycle. It incl
     - Database
       - lsm (lifecycle management)
       - migration
-      - seeder
+      - seed
     - Model
       - model
       - generator
