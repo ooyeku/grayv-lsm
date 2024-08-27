@@ -1,6 +1,12 @@
 package model
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -103,4 +109,147 @@ func NewModelDefinition(name string, fields []Field) *ModelDefinition {
 		Name:   name,
 		Fields: fields,
 	}
+}
+
+// ModelManager handles model-related operations
+type ModelManager struct {
+	models map[string]*ModelDefinition
+}
+
+// NewModelManager creates a new ModelManager instance
+func NewModelManager() *ModelManager {
+	mm := &ModelManager{
+		models: make(map[string]*ModelDefinition),
+	}
+	if err := mm.LoadModels(); err != nil {
+		log.Printf("Error loading models: %v", err)
+	}
+	return mm
+}
+
+// CreateModel creates a new model
+func (mm *ModelManager) CreateModel(name string, fields []Field) error {
+	if _, exists := mm.models[name]; exists {
+		return fmt.Errorf("model %s already exists", name)
+	}
+
+	mm.models[name] = NewModelDefinition(name, fields)
+	return mm.SaveModels()
+}
+
+// UpdateModel updates an existing model
+func (mm *ModelManager) UpdateModel(name string, fields []Field) error {
+	if _, exists := mm.models[name]; !exists {
+		return fmt.Errorf("model %s does not exist", name)
+	}
+
+	mm.models[name] = NewModelDefinition(name, fields)
+	return nil
+}
+
+// DeleteModel deletes a model
+func (mm *ModelManager) DeleteModel(name string) error {
+	if _, exists := mm.models[name]; !exists {
+		return fmt.Errorf("model %s does not exist", name)
+	}
+
+	delete(mm.models, name)
+	return nil
+}
+
+// GetModel retrieves a model by name
+func (mm *ModelManager) GetModel(name string) (*ModelDefinition, error) {
+	model, exists := mm.models[name]
+	if !exists {
+		return nil, fmt.Errorf("model %s does not exist", name)
+	}
+
+	return model, nil
+}
+
+// ListModels returns a list of all model names
+func (mm *ModelManager) ListModels() []string {
+	var modelNames []string
+	for name := range mm.models {
+		modelNames = append(modelNames, name)
+	}
+	sort.Strings(modelNames)
+	return modelNames
+}
+
+// ValidateField validates a field's type
+func (mm *ModelManager) ValidateField(field Field) error {
+	validTypes := map[string]bool{
+		"string": true, "int": true, "bool": true, "time.Time": true,
+		"float64": true, "[]byte": true,
+	}
+
+	if !validTypes[field.Type] {
+		return fmt.Errorf("invalid field type: %s", field.Type)
+	}
+
+	return nil
+}
+
+// GenerateMigration generates a migration for a model
+func (mm *ModelManager) GenerateMigration(model *ModelDefinition) string {
+	var migration strings.Builder
+
+	migration.WriteString(fmt.Sprintf("CREATE TABLE %s (\n", strings.ToLower(model.Name)))
+
+	for _, field := range model.Fields {
+		migration.WriteString(fmt.Sprintf("  %s %s", strings.ToLower(field.Name), getSQLType(field.Type)))
+		if field.IsPrimary {
+			migration.WriteString(" PRIMARY KEY")
+		}
+		if !field.IsNull {
+			migration.WriteString(" NOT NULL")
+		}
+		migration.WriteString(",\n")
+	}
+
+	migration.WriteString(");\n")
+
+	return migration.String()
+}
+
+// getSQLType converts a Go type to a SQL type
+func getSQLType(goType string) string {
+	switch goType {
+	case "string":
+		return "VARCHAR(255)"
+	case "int":
+		return "INTEGER"
+	case "bool":
+		return "BOOLEAN"
+	case "time.Time":
+		return "TIMESTAMP"
+	case "float64":
+		return "DOUBLE PRECISION"
+	case "[]byte":
+		return "BYTEA"
+	default:
+		return "VARCHAR(255)"
+	}
+}
+
+const modelStorageFile = "models.json"
+
+func (mm *ModelManager) SaveModels() error {
+	data, err := json.Marshal(mm.models)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(modelStorageFile, data, 0644)
+}
+
+func (mm *ModelManager) LoadModels() error {
+	data, err := os.ReadFile(modelStorageFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil // File doesn't exist, which is fine for a new setup
+		}
+		return err
+	}
+	return json.Unmarshal(data, &mm.models)
 }
