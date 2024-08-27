@@ -35,3 +35,7 @@ func (c *Connection) Ping() error {
 func (c *Connection) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	return c.db.Query(query, args...)
 }
+
+func (c *Connection) GetDB() *sql.DB {
+	return c.db
+}

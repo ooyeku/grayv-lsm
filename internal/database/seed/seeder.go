@@ -1,12 +1,13 @@
-package database
+package seed
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Seed represents a single seed file
@@ -30,14 +31,16 @@ func NewSeeder(db *sql.DB) *Seeder {
 func (s *Seeder) LoadSeeds(dir string) error {
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return fmt.Errorf("failed to read seeds directory: %w", err)
+		logrus.WithError(err).Error("failed to read seeds directory")
+		return err
 	}
 
 	for _, file := range files {
 		if filepath.Ext(file.Name()) == ".sql" {
 			seed, err := parseSeedFile(filepath.Join(dir, file.Name()))
 			if err != nil {
-				return fmt.Errorf("failed to parse seed file %s: %w", file.Name(), err)
+				logrus.WithError(err).Errorf("failed to parse seed file %s", file.Name())
+				return err
 			}
 			s.seeds = append(s.seeds, seed)
 		}
@@ -65,19 +68,23 @@ func (s *Seeder) Seed() error {
 func (s *Seeder) executeSeed(seed *Seed) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return fmt.Errorf("error starting transaction: %w", err)
+		logrus.WithError(err).Error("error starting transaction")
+		return err
 	}
 
 	if _, err := tx.Exec(seed.SQL); err != nil {
 		tx.Rollback()
-		return fmt.Errorf("error executing seed %s: %w", seed.Name, err)
+		logrus.WithError(err).Errorf("error executing seed %s", seed.Name)
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing seed %s: %w", seed.Name, err)
+		tx.Rollback()
+		logrus.WithError(err).Errorf("error committing seed %s", seed.Name)
+		return err
 	}
 
-	fmt.Printf("Executed seed: %s\n", seed.Name)
+	logrus.Infof("Executed seed: %s", seed.Name)
 	return nil
 }
 

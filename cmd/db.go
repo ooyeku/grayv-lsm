@@ -1,18 +1,30 @@
 package cmd
 
 import (
-	"fmt"
+	"os"
+
 	"github.com/ooyeku/grav-lsm/internal/database/lsm"
+	"github.com/ooyeku/grav-lsm/internal/database/seed"
+	"github.com/ooyeku/grav-lsm/internal/orm"
 	"github.com/ooyeku/grav-lsm/pkg/config"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var dbManager *lsm.DBLifecycleManager
+var log = logrus.New()
+var cfg *config.Config
 
 func init() {
-	cfg, err := config.LoadConfig("config.json")
+	log.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp: true,
+	})
+	log.SetOutput(os.Stdout)
+	log.SetLevel(logrus.InfoLevel)
+	var err error
+	cfg, err = config.LoadConfig("config.json")
 	if err != nil {
-		fmt.Println("Error loading config:", err)
+		log.WithError(err).Error("Error loading config")
 		return
 	}
 	dbManager = lsm.NewDBLifecycleManager(cfg)
@@ -28,9 +40,9 @@ var buildCmd = &cobra.Command{
 	Short: "Build the database Docker image",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := dbManager.BuildImage(); err != nil {
-			fmt.Println("Error building database image:", err)
+			log.WithError(err).Error("Error building database image")
 		} else {
-			fmt.Println("Database image built successfully")
+			log.Info("Database image built successfully")
 		}
 	},
 }
@@ -40,9 +52,9 @@ var startCmd = &cobra.Command{
 	Short: "Start the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := dbManager.StartContainer(); err != nil {
-			fmt.Println("Error starting database container:", err)
+			log.WithError(err).Error("Error starting database container")
 		} else {
-			fmt.Println("Database container started successfully")
+			log.Info("Database container started successfully")
 		}
 	},
 }
@@ -52,9 +64,9 @@ var stopCmd = &cobra.Command{
 	Short: "Stop the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := dbManager.StopContainer(); err != nil {
-			fmt.Println("Error stopping database container:", err)
+			log.WithError(err).Error("Error stopping database container")
 		} else {
-			fmt.Println("Database container stopped successfully")
+			log.Info("Database container stopped successfully")
 		}
 	},
 }
@@ -64,9 +76,9 @@ var removeCmd = &cobra.Command{
 	Short: "Remove the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := dbManager.RemoveContainer(); err != nil {
-			fmt.Println("Error removing database container:", err)
+			log.WithError(err).Error("Error removing database container")
 		} else {
-			fmt.Println("Database container removed successfully")
+			log.Info("Database container removed successfully")
 		}
 	},
 }
@@ -75,12 +87,38 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Check the health of the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
-		status, err := dbManager.GetStatus()
+		_, err := dbManager.GetStatus()
 		if err != nil {
-			fmt.Println("Error checking database status:", err)
+			log.WithError(err).Error("Error checking database status")
 			return
 		}
-		fmt.Println(status)
+	},
+}
+
+var seedCmd = &cobra.Command{
+	Use:   "seed",
+	Short: "Seed the database with initial data",
+	Run: func(cmd *cobra.Command, args []string) {
+		conn, err := orm.NewConnection(&cfg.Database)
+		if err != nil {
+			log.WithError(err).Error("Error connecting to database")
+			return
+		}
+		defer conn.Close()
+
+		seeder := seed.NewSeeder(conn.GetDB())
+		err = seeder.LoadSeeds("./seeds")
+		if err != nil {
+			log.WithError(err).Error("Error loading seeds")
+			return
+		}
+
+		err = seeder.Seed()
+		if err != nil {
+			log.WithError(err).Error("Error seeding database")
+		} else {
+			log.Info("Database seeded successfully")
+		}
 	},
 }
 
@@ -90,5 +128,6 @@ func init() {
 	dbCmd.AddCommand(stopCmd)
 	dbCmd.AddCommand(removeCmd)
 	dbCmd.AddCommand(statusCmd)
+	dbCmd.AddCommand(seedCmd)
 	RootCmd.AddCommand(dbCmd)
 }
