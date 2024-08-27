@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Migration struct {
@@ -22,10 +24,11 @@ type Migration struct {
 type Migrator struct {
 	db         *sql.DB
 	migrations []*Migration
+	logger     *logrus.Logger
 }
 
-func NewMigrator(db *sql.DB) *Migrator {
-	return &Migrator{db: db}
+func NewMigrator(db *sql.DB, logger *logrus.Logger) *Migrator {
+	return &Migrator{db: db, logger: logger}
 }
 
 func (m *Migrator) LoadMigrations(dir string) error {
@@ -53,12 +56,19 @@ func (m *Migrator) LoadMigrations(dir string) error {
 
 func (m *Migrator) Migrate() error {
 	if err := m.createMigrationsTable(); err != nil {
-		return err
+		return fmt.Errorf("failed to create migrations table: %w", err)
+	}
+
+	appliedMigrations, err := m.getAppliedMigrations()
+	if err != nil {
+		return fmt.Errorf("failed to get applied migrations: %w", err)
 	}
 
 	for _, migration := range m.migrations {
-		if err := m.runMigration(migration); err != nil {
-			return err
+		if !contains(appliedMigrations, migration.Version) {
+			if err := m.runMigration(migration); err != nil {
+				return fmt.Errorf("failed to run migration %s: %w", migration.Name, err)
+			}
 		}
 	}
 
@@ -72,12 +82,16 @@ func (m *Migrator) Rollback(steps int) error {
 
 	appliedMigrations, err := m.getAppliedMigrations()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get applied migrations: %w", err)
 	}
 
 	for i := 0; i < steps && i < len(appliedMigrations); i++ {
-		if err := m.rollbackMigration(appliedMigrations[i]); err != nil {
-			return err
+		migration := m.findMigration(appliedMigrations[i])
+		if migration == nil {
+			return fmt.Errorf("migration with version %d not found", appliedMigrations[i])
+		}
+		if err := m.rollbackMigration(migration); err != nil {
+			return fmt.Errorf("failed to rollback migration %s: %w", migration.Name, err)
 		}
 	}
 
@@ -96,37 +110,26 @@ func (m *Migrator) createMigrationsTable() error {
 }
 
 func (m *Migrator) runMigration(migration *Migration) error {
-	var count int
-	err := m.db.QueryRow("SELECT COUNT(*) FROM migrations WHERE version = $1", migration.Version).Scan(&count)
-	if err != nil {
-		return fmt.Errorf("error checking migration status: %w", err)
-	}
-
-	if count > 0 {
-		return nil
-	}
-
 	tx, err := m.db.Begin()
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)
 	}
+	defer tx.Rollback()
 
 	if _, err := tx.Exec(migration.UpSQL); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("error applying migration %s: %w", migration.Name, err)
+		return fmt.Errorf("error applying migration: %w", err)
 	}
 
 	if _, err := tx.Exec("INSERT INTO migrations (version, name) VALUES ($1, $2)",
 		migration.Version, migration.Name); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("error recording migration %s: %w", migration.Name, err)
+		return fmt.Errorf("error recording migration: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing migration %s: %w", migration.Name, err)
+		return fmt.Errorf("error committing migration: %w", err)
 	}
 
-	fmt.Printf("Applied migration: %s\n", migration.Name)
+	m.logger.Infof("Applied migration: %s", migration.Name)
 	return nil
 }
 
@@ -135,55 +138,56 @@ func (m *Migrator) rollbackMigration(migration *Migration) error {
 	if err != nil {
 		return fmt.Errorf("error starting transaction: %w", err)
 	}
+	defer tx.Rollback()
 
 	if _, err := tx.Exec(migration.DownSQL); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("error rolling back migration %s: %w", migration.Name, err)
+		return fmt.Errorf("error rolling back migration: %w", err)
 	}
 
 	if _, err := tx.Exec("DELETE FROM migrations WHERE version = $1", migration.Version); err != nil {
-		tx.Rollback()
-		return fmt.Errorf("error removing migration record %s: %w", migration.Name, err)
+		return fmt.Errorf("error removing migration record: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("error committing rollback of migration %s: %w", migration.Name, err)
+		return fmt.Errorf("error committing rollback: %w", err)
 	}
 
-	fmt.Printf("Rolled back migration: %s\n", migration.Name)
+	m.logger.Infof("Rolled back migration: %s", migration.Name)
 	return nil
 }
 
-func (m *Migrator) getAppliedMigrations() ([]*Migration, error) {
-	rows, err := m.db.Query("SELECT version, name FROM migrations ORDER BY version DESC")
+func (m *Migrator) getAppliedMigrations() ([]int64, error) {
+	rows, err := m.db.Query("SELECT version FROM migrations ORDER BY version DESC")
 	if err != nil {
 		return nil, fmt.Errorf("error querying migrations: %w", err)
 	}
 	defer rows.Close()
 
-	var appliedMigrations []*Migration
+	var appliedMigrations []int64
 	for rows.Next() {
 		var version int64
-		var name string
-		if err := rows.Scan(&version, &name); err != nil {
+		if err := rows.Scan(&version); err != nil {
 			return nil, fmt.Errorf("error scanning migration row: %w", err)
 		}
-
-		for _, migration := range m.migrations {
-			if migration.Version == version {
-				appliedMigrations = append(appliedMigrations, migration)
-				break
-			}
-		}
+		appliedMigrations = append(appliedMigrations, version)
 	}
 
 	return appliedMigrations, nil
 }
 
+func (m *Migrator) findMigration(version int64) *Migration {
+	for _, migration := range m.migrations {
+		if migration.Version == version {
+			return migration
+		}
+	}
+	return nil
+}
+
 func parseMigrationFile(filename string) (*Migration, error) {
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading migration file: %w", err)
 	}
 
 	parts := strings.Split(string(content), "-- Down")
@@ -197,7 +201,7 @@ func parseMigrationFile(filename string) (*Migration, error) {
 	name := filepath.Base(filename)
 	version, err := parseVersionFromFilename(name)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error parsing version from filename: %w", err)
 	}
 
 	return &Migration{
@@ -221,4 +225,13 @@ func parseVersionFromFilename(filename string) (int64, error) {
 	}
 
 	return version, nil
+}
+
+func contains(slice []int64, item int64) bool {
+	for _, v := range slice {
+		if v == item {
+			return true
+		}
+	}
+	return false
 }

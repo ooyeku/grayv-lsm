@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/ooyeku/grav-lsm/internal/database/lsm"
+	"github.com/ooyeku/grav-lsm/internal/database/migration"
 	"github.com/ooyeku/grav-lsm/internal/database/seed"
 	"github.com/ooyeku/grav-lsm/internal/orm"
 	"github.com/ooyeku/grav-lsm/pkg/config"
@@ -122,6 +124,71 @@ var seedCmd = &cobra.Command{
 	},
 }
 
+var migrateCmd = &cobra.Command{
+	Use:   "migrate",
+	Short: "Run database migrations",
+	Run: func(cmd *cobra.Command, args []string) {
+		conn, err := orm.NewConnection(&cfg.Database)
+		if err != nil {
+			log.WithError(err).Error("Error connecting to database")
+			return
+		}
+		defer conn.Close()
+
+		migrator := migration.NewMigrator(conn.GetDB(), log)
+		err = migrator.LoadMigrations("./migrations")
+		if err != nil {
+			log.WithError(err).Error("Error loading migrations")
+			return
+		}
+
+		err = migrator.Migrate()
+		if err != nil {
+			log.WithError(err).Error("Error running migrations")
+		} else {
+			log.Info("Database migrations completed successfully")
+		}
+	},
+}
+
+var rollbackCmd = &cobra.Command{
+	Use:   "rollback [steps]",
+	Short: "Rollback database migrations",
+	Args:  cobra.MaximumNArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		steps := 1
+		if len(args) > 0 {
+			var err error
+			steps, err = strconv.Atoi(args[0])
+			if err != nil {
+				log.WithError(err).Error("Invalid number of steps")
+				return
+			}
+		}
+
+		conn, err := orm.NewConnection(&cfg.Database)
+		if err != nil {
+			log.WithError(err).Error("Error connecting to database")
+			return
+		}
+		defer conn.Close()
+
+		migrator := migration.NewMigrator(conn.GetDB(), log)
+		err = migrator.LoadMigrations("./migrations")
+		if err != nil {
+			log.WithError(err).Error("Error loading migrations")
+			return
+		}
+
+		err = migrator.Rollback(steps)
+		if err != nil {
+			log.WithError(err).Error("Error rolling back migrations")
+		} else {
+			log.Infof("Rolled back %d migration(s) successfully", steps)
+		}
+	},
+}
+
 func init() {
 	dbCmd.AddCommand(buildCmd)
 	dbCmd.AddCommand(startCmd)
@@ -129,5 +196,7 @@ func init() {
 	dbCmd.AddCommand(removeCmd)
 	dbCmd.AddCommand(statusCmd)
 	dbCmd.AddCommand(seedCmd)
+	dbCmd.AddCommand(migrateCmd)
+	dbCmd.AddCommand(rollbackCmd)
 	RootCmd.AddCommand(dbCmd)
 }
