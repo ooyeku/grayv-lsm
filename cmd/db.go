@@ -189,6 +189,34 @@ var rollbackCmd = &cobra.Command{
 	},
 }
 
+var listTablesCmd = &cobra.Command{
+	Use:   "list-tables",
+	Short: "List all tables in the database",
+	Run: func(cmd *cobra.Command, args []string) {
+		conn, err := orm.NewConnection(&cfg.Database)
+		if err != nil {
+			log.WithError(err).Error("Error connecting to database")
+			return
+		}
+		defer conn.Close()
+
+		tables, err := conn.ListTables()
+		if err != nil {
+			log.WithError(err).Error("Error listing tables")
+			return
+		}
+
+		if len(tables) == 0 {
+			log.Info("No tables found in the database")
+		} else {
+			log.Info("Tables in the database:")
+			for _, table := range tables {
+				log.Infof("- %s", table)
+			}
+		}
+	},
+}
+
 func init() {
 	dbCmd.AddCommand(buildCmd)
 	dbCmd.AddCommand(startCmd)
@@ -198,5 +226,6 @@ func init() {
 	dbCmd.AddCommand(seedCmd)
 	dbCmd.AddCommand(migrateCmd)
 	dbCmd.AddCommand(rollbackCmd)
+	dbCmd.AddCommand(listTablesCmd)
 	RootCmd.AddCommand(dbCmd)
 }

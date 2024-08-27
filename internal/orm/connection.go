@@ -39,3 +39,27 @@ func (c *Connection) Query(query string, args ...interface{}) (*sql.Rows, error)
 func (c *Connection) GetDB() *sql.DB {
 	return c.db
 }
+
+func (c *Connection) ListTables() ([]string, error) {
+	rows, err := c.db.Query(`
+		SELECT table_name 
+		FROM information_schema.tables 
+		WHERE table_schema = 'public' 
+		AND table_type = 'BASE TABLE'
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query tables: %w", err)
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var tableName string
+		if err := rows.Scan(&tableName); err != nil {
+			return nil, fmt.Errorf("failed to scan table name: %w", err)
+		}
+		tables = append(tables, tableName)
+	}
+
+	return tables, nil
+}
