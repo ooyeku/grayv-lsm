@@ -2,30 +2,20 @@ package cmd
 
 import (
 	"fmt"
-
+	"github.com/ooyeku/grav-lsm/internal/database/lsm"
+	"github.com/ooyeku/grav-lsm/pkg/config"
 	"github.com/spf13/cobra"
-	"github.com/yuin/gopher-lua"
-	"os/exec"
 )
 
-func runLuaFunction(funcName string) error {
-	L := lua.NewState()
-	defer L.Close()
-	if err := L.DoFile("internal/database/lsm/db_lsm.lua"); err != nil {
-		return err
+var dbManager *lsm.DBLifecycleManager
+
+func init() {
+	cfg, err := config.LoadConfig("config.json")
+	if err != nil {
+		fmt.Println("Error loading config:", err)
+		return
 	}
-	fn := L.GetGlobal(funcName)
-	if fn.Type() != lua.LTFunction {
-		return fmt.Errorf("'%s' is not a function", funcName)
-	}
-	if err := L.CallByParam(lua.P{
-		Fn:      fn,
-		NRet:    0,
-		Protect: true,
-	}); err != nil {
-		return err
-	}
-	return nil
+	dbManager = lsm.NewDBLifecycleManager(cfg)
 }
 
 var dbCmd = &cobra.Command{
@@ -37,7 +27,7 @@ var buildCmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build the database Docker image",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := runLuaFunction("Build_image"); err != nil {
+		if err := dbManager.BuildImage(); err != nil {
 			fmt.Println("Error building database image:", err)
 		} else {
 			fmt.Println("Database image built successfully")
@@ -49,7 +39,7 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := runLuaFunction("Start_container"); err != nil {
+		if err := dbManager.StartContainer(); err != nil {
 			fmt.Println("Error starting database container:", err)
 		} else {
 			fmt.Println("Database container started successfully")
@@ -61,7 +51,7 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := runLuaFunction("Stop_container"); err != nil {
+		if err := dbManager.StopContainer(); err != nil {
 			fmt.Println("Error stopping database container:", err)
 		} else {
 			fmt.Println("Database container stopped successfully")
@@ -73,7 +63,7 @@ var removeCmd = &cobra.Command{
 	Use:   "remove",
 	Short: "Remove the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := runLuaFunction("Remove_container"); err != nil {
+		if err := dbManager.RemoveContainer(); err != nil {
 			fmt.Println("Error removing database container:", err)
 		} else {
 			fmt.Println("Database container removed successfully")
@@ -83,18 +73,14 @@ var removeCmd = &cobra.Command{
 
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Check if the database Docker container is running",
+	Short: "Check the health of the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
-		out, err := exec.Command("docker", "ps", "-f", "name=gravorm-db", "--format", "{{.Names}}").Output()
+		status, err := dbManager.GetStatus()
 		if err != nil {
-			fmt.Println("Error checking database container status:", err)
+			fmt.Println("Error checking database status:", err)
 			return
 		}
-		if string(out) == "gravorm-db\n" {
-			fmt.Println("Database container is running")
-		} else {
-			fmt.Println("Database container is not running")
-		}
+		fmt.Println(status)
 	},
 }
 
