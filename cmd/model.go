@@ -35,6 +35,13 @@ var listModelsCmd = &cobra.Command{
 	Run:   runListModels,
 }
 
+var generateModelCmd = &cobra.Command{
+	Use:   "generate [name]",
+	Short: "Generate Go code for an existing model",
+	Args:  cobra.ExactArgs(1),
+	Run:   runGenerateModel,
+}
+
 func init() {
 	modelManager = model.NewModelManager()
 
@@ -46,6 +53,7 @@ func init() {
 	modelCmd.AddCommand(updateModelCmd)
 	RootCmd.AddCommand(modelCmd)
 	modelCmd.AddCommand(listModelsCmd)
+	modelCmd.AddCommand(generateModelCmd)
 }
 
 func runCreateModel(cmd *cobra.Command, args []string) {
@@ -117,6 +125,24 @@ func runListModels(cmd *cobra.Command, args []string) {
 	for _, model := range models {
 		log.Infof("- %s", model)
 	}
+}
+
+func runGenerateModel(cmd *cobra.Command, args []string) {
+	modelName := args[0]
+
+	modelDef, err := modelManager.GetModel(modelName)
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get model %s", modelName)
+		return
+	}
+
+	err = model.GenerateModelFile(modelDef)
+	if err != nil {
+		log.WithError(err).Errorf("Failed to generate model file for %s", modelName)
+		return
+	}
+
+	log.Infof("Model file for %s generated successfully", modelName)
 }
 
 func parseFields(fields []string) ([]model.Field, error) {

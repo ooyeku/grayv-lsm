@@ -17,7 +17,7 @@ import (
 type {{.Name}} struct {
 	model.DefaultModel
 	{{- range .Fields}}
-	{{.Name}} {{.Type}} ` + "`json:\"{{.Name | toLower}}\"`" + `
+	{{.Name | title}} {{.Type}} ` + "`json:\"{{.Name | toLower}}\"`" + `
 	{{- end}}
 }
 
@@ -32,6 +32,7 @@ func GenerateModelFile(modelDef *ModelDefinition) error {
 		"firstLetter": func(s string) string {
 			return strings.ToLower(s[:1])
 		},
+		"title": strings.Title,
 	}).Parse(modelTemplate)
 	if err != nil {
 		return fmt.Errorf("error parsing template: %w", err)

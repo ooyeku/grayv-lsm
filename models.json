@@ -1,0 +1,1 @@
+{"Toy":{"Name":"Toy","Fields":[{"Name":"name","Type":"string","Tag":"json:\"name\"","IsNull":false,"IsPrimary":false},{"Name":" sku","Type":"int","Tag":"json:\" sku\"","IsNull":false,"IsPrimary":false}]}}
