@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/spf13/viper"
+	"github.com/ooyeku/grav-lsm/embedded"
 )
 
 // Config holds all configuration for our program
@@ -40,31 +39,18 @@ type LoggingConfig struct {
 }
 
 // LoadConfig reads configuration from file or environment variables
-func LoadConfig(configPath string) (*Config, error) {
-	v := viper.New()
-
-	v.SetConfigName("config")
-	v.AddConfigPath(configPath)
-	v.AddConfigPath(".")
-	v.SetEnvPrefix("GRAVORM")
-	v.AutomaticEnv()
-	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %w", err)
-		}
+func LoadConfig() (*Config, error) {
+	configData, err := embedded.EmbeddedFiles.ReadFile("config.json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read embedded config file: %w", err)
 	}
 
-	var config Config
-	if err := v.Unmarshal(&config); err != nil {
-		return nil, fmt.Errorf("unable to decode into config struct: %w", err)
+	var cfg Config
+	if err := json.Unmarshal(configData, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	// Set defaults if not provided
-	setDefaults(&config)
-
-	return &config, nil
+	return &cfg, nil
 }
 
 // setDefaults sets default values for configuration

@@ -2,10 +2,12 @@ package lsm
 
 import (
 	"fmt"
+	"github.com/ooyeku/grav-lsm/embedded"
 	"github.com/ooyeku/grav-lsm/pkg/config"
 	"github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -89,22 +91,34 @@ func (dm *DBLifecycleManager) runCommand(command string) (string, error) {
 // and runs the build command. If the build process fails, it logs the error and returns it.
 // Otherwise, it logs the successful build and returns nil.
 func (dm *DBLifecycleManager) BuildImage() error {
-	dm.setEnvVars()
-	log.Info("Starting the build process for the database Docker image...")
-
-	if !dm.fileExists("./internal/database/lsm/Dockerfile") {
-		log.Error("Dockerfile not found!")
-		return fmt.Errorf("dockerfile not found")
+	dockerfileContent, err := embedded.EmbeddedFiles.ReadFile("Dockerfile")
+	if err != nil {
+		return fmt.Errorf("failed to read embedded Dockerfile: %w", err)
 	}
 
-	buildCommand := "docker build -f ./internal/database/lsm/Dockerfile -t gravorm-db --build-arg DB_USER=$DB_USER --build-arg DB_PASSWORD=$DB_PASSWORD --build-arg DB_NAME=$DB_NAME ."
+	// Remove the COPY instruction
+	dockerfileLines := strings.Split(string(dockerfileContent), "\n")
+	var newDockerfileContent strings.Builder
+	for _, line := range dockerfileLines {
+		if !strings.HasPrefix(line, "COPY ./internal/database/init.sql") {
+			newDockerfileContent.WriteString(line + "\n")
+		}
+	}
+
+	tempDir, err := os.MkdirTemp("", "gravorm-db-build")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	if err := os.WriteFile(filepath.Join(tempDir, "Dockerfile"), []byte(newDockerfileContent.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write Dockerfile to temp directory: %w", err)
+	}
+
+	buildCommand := fmt.Sprintf("docker build -t gravorm-db %s", tempDir)
 	output, err := dm.runCommand(buildCommand)
 	if err != nil {
-		log.WithFields(logrus.Fields{
-			"error":  err,
-			"output": output,
-		}).Error("failed to build the database Docker image")
-		return fmt.Errorf("failed to build the database Docker image: %v\nOutput: %s", err, output)
+		return fmt.Errorf("failed to build the database docker image: %v\nOutput: %s", err, output)
 	}
 
 	log.Info("Database Docker image built successfully.")

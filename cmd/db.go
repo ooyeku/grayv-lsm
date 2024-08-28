@@ -25,7 +25,7 @@ func init() {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logrus.InfoLevel)
 	var err error
-	cfg, err = config.LoadConfig("config.json")
+	cfg, err = config.LoadConfig()
 	if err != nil {
 		log.WithError(err).Error("Error loading config")
 		return
@@ -134,7 +134,7 @@ var seedCmd = &cobra.Command{
 		defer conn.Close()
 
 		seeder := seed.NewSeeder(conn.GetDB())
-		err = seeder.LoadSeeds("./seeds")
+		err = seeder.LoadSeeds()
 		if err != nil {
 			log.WithError(err).Error("Error loading seeds")
 			return
@@ -161,7 +161,7 @@ var migrateCmd = &cobra.Command{
 		defer conn.Close()
 
 		migrator := migration.NewMigrator(conn.GetDB(), log)
-		err = migrator.LoadMigrations("./migrations")
+		err = migrator.LoadMigrations()
 		if err != nil {
 			log.WithError(err).Error("Error loading migrations")
 			return
@@ -199,7 +199,7 @@ var rollbackCmd = &cobra.Command{
 		defer conn.Close()
 
 		migrator := migration.NewMigrator(conn.GetDB(), log)
-		err = migrator.LoadMigrations("./migrations")
+		err = migrator.LoadMigrations()
 		if err != nil {
 			log.WithError(err).Error("Error loading migrations")
 			return

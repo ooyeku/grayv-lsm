@@ -3,13 +3,13 @@ package migration
 import (
 	"database/sql"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/ooyeku/grav-lsm/embedded"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,17 +31,21 @@ func NewMigrator(db *sql.DB, logger *logrus.Logger) *Migrator {
 	return &Migrator{db: db, logger: logger}
 }
 
-func (m *Migrator) LoadMigrations(dir string) error {
-	files, err := ioutil.ReadDir(dir)
+func (m *Migrator) LoadMigrations() error {
+	entries, err := embedded.EmbeddedFiles.ReadDir("migrations")
 	if err != nil {
-		return fmt.Errorf("failed to read migrations directory: %w", err)
+		return fmt.Errorf("failed to read embedded migrations directory: %w", err)
 	}
 
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".sql" {
-			migration, err := parseMigrationFile(filepath.Join(dir, file.Name()))
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) == ".sql" {
+			migrationContent, err := embedded.EmbeddedFiles.ReadFile(filepath.Join("migrations", entry.Name()))
 			if err != nil {
-				return fmt.Errorf("failed to parse migration file %s: %w", file.Name(), err)
+				return fmt.Errorf("failed to read migration file %s: %w", entry.Name(), err)
+			}
+			migration, err := parseMigrationContent(entry.Name(), string(migrationContent))
+			if err != nil {
+				return fmt.Errorf("failed to parse migration file %s: %w", entry.Name(), err)
 			}
 			m.migrations = append(m.migrations, migration)
 		}
@@ -52,6 +56,29 @@ func (m *Migrator) LoadMigrations(dir string) error {
 	})
 
 	return nil
+}
+
+func parseMigrationContent(filename, content string) (*Migration, error) {
+	parts := strings.Split(content, "-- Down")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid migration file format")
+	}
+
+	upSQL := strings.TrimSpace(parts[0])
+	downSQL := strings.TrimSpace(parts[1])
+
+	version, err := parseVersionFromFilename(filename)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing version from filename: %w", err)
+	}
+
+	return &Migration{
+		Version:   version,
+		Name:      filename,
+		UpSQL:     upSQL,
+		DownSQL:   downSQL,
+		Timestamp: time.Now(),
+	}, nil
 }
 
 func (m *Migrator) Migrate() error {
@@ -182,35 +209,6 @@ func (m *Migrator) findMigration(version int64) *Migration {
 		}
 	}
 	return nil
-}
-
-func parseMigrationFile(filename string) (*Migration, error) {
-	content, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("error reading migration file: %w", err)
-	}
-
-	parts := strings.Split(string(content), "-- Down")
-	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid migration file format")
-	}
-
-	upSQL := strings.TrimSpace(parts[0])
-	downSQL := strings.TrimSpace(parts[1])
-
-	name := filepath.Base(filename)
-	version, err := parseVersionFromFilename(name)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing version from filename: %w", err)
-	}
-
-	return &Migration{
-		Version:   version,
-		Name:      name,
-		UpSQL:     upSQL,
-		DownSQL:   downSQL,
-		Timestamp: time.Now(),
-	}, nil
 }
 
 func parseVersionFromFilename(filename string) (int64, error) {

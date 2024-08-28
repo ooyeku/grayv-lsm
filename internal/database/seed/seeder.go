@@ -2,11 +2,11 @@ package seed
 
 import (
 	"database/sql"
-	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/ooyeku/grav-lsm/embedded"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,19 +28,23 @@ func NewSeeder(db *sql.DB) *Seeder {
 }
 
 // LoadSeeds loads all seed files from the specified directory
-func (s *Seeder) LoadSeeds(dir string) error {
-	files, err := os.ReadDir(dir)
+func (s *Seeder) LoadSeeds() error {
+	entries, err := embedded.EmbeddedFiles.ReadDir("seeds")
 	if err != nil {
-		logrus.WithError(err).Error("failed to read seeds directory")
+		logrus.WithError(err).Error("failed to read embedded seeds directory")
 		return err
 	}
 
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".sql" {
-			seed, err := parseSeedFile(filepath.Join(dir, file.Name()))
+	for _, entry := range entries {
+		if filepath.Ext(entry.Name()) == ".sql" {
+			seedContent, err := embedded.EmbeddedFiles.ReadFile(filepath.Join("seeds", entry.Name()))
 			if err != nil {
-				logrus.WithError(err).Errorf("failed to parse seed file %s", file.Name())
+				logrus.WithError(err).Errorf("failed to read seed file %s", entry.Name())
 				return err
+			}
+			seed := &Seed{
+				Name: entry.Name(),
+				SQL:  string(seedContent),
 			}
 			s.seeds = append(s.seeds, seed)
 		}
@@ -90,7 +94,7 @@ func (s *Seeder) executeSeed(seed *Seed) error {
 
 // parseSeedFile reads and parses a seed file
 func parseSeedFile(filename string) (*Seed, error) {
-	content, err := os.ReadFile(filename)
+	content, err := embedded.EmbeddedFiles.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
