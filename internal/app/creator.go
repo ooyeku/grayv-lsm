@@ -8,15 +8,15 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/sirupsen/logrus"
+	"github.com/ooyeku/grav-lsm/pkg/logging"
 )
 
 type AppCreator struct {
-	logger *logrus.Logger
+	logger *logging.ColorfulLogger
 }
 
-func NewAppCreator(logger *logrus.Logger) *AppCreator {
-	return &AppCreator{logger: logger}
+func NewAppCreator() *AppCreator {
+	return &AppCreator{logger: logging.NewColorfulLogger()}
 }
 
 func (ac *AppCreator) CreateApp(name string) error {
@@ -46,7 +46,7 @@ func (ac *AppCreator) CreateApp(name string) error {
 		return fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
-	ac.logger.Infof("Grav app '%s' created successfully", appName)
+	ac.logger.Info("Grav app '" + appName + "' created successfully")
 	return nil
 }
 
@@ -80,7 +80,7 @@ func (ac *AppCreator) createGoMod(appName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize go module: %w\n%s", err, output)
 	}
-	ac.logger.Infof("Go module initialized for %s", appName)
+	ac.logger.Info("Go module initialized for " + appName)
 	return nil
 }
 
@@ -122,6 +122,6 @@ func (ac *AppCreator) DeleteApp(name string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete app directory %s: %w", appName, err)
 	}
-	ac.logger.Infof("Grav app '%s' deleted successfully", appName)
+	ac.logger.Info("Grav app '" + appName + "' deleted successfully")
 	return nil
 }

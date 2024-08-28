@@ -3,15 +3,20 @@ package migration
 import (
 	"database/sql"
 	"fmt"
+	"github.com/ooyeku/grav-lsm/embedded"
+	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/ooyeku/grav-lsm/embedded"
-	"github.com/sirupsen/logrus"
 )
+
+var logger *logrus.Logger
+
+func init() {
+	logger = logrus.New()
+}
 
 type Migration struct {
 	Version   int64

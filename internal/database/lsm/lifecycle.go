@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/ooyeku/grav-lsm/embedded"
 	"github.com/ooyeku/grav-lsm/pkg/config"
-	"github.com/sirupsen/logrus"
+	"github.com/ooyeku/grav-lsm/pkg/logging"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +12,7 @@ import (
 )
 
 // log is a variable of type logrus.Logger. It is used for logging messages and errors throughout the program.
-var log = logrus.New()
+var log *logging.ColorfulLogger
 
 // init initializes the logging configuration for the application.
 //
@@ -21,11 +21,7 @@ var log = logrus.New()
 //
 // This function is called automatically when the package is initialized.
 func init() {
-	log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(logrus.InfoLevel)
+	log = logging.NewColorfulLogger()
 }
 
 // DBLifecycleManager represents a type that manages the lifecycle of a database. It contains a config.Config object that
@@ -34,6 +30,7 @@ func init() {
 // getting the status of the container.
 type DBLifecycleManager struct {
 	config *config.Config
+	logger *logging.ColorfulLogger
 }
 
 // NewDBLifecycleManager creates a new instance of the DBLifecycleManager struct.
@@ -41,6 +38,7 @@ type DBLifecycleManager struct {
 func NewDBLifecycleManager(config *config.Config) *DBLifecycleManager {
 	return &DBLifecycleManager{
 		config: config,
+		logger: logging.NewColorfulLogger(),
 	}
 }
 
@@ -50,17 +48,17 @@ func NewDBLifecycleManager(config *config.Config) *DBLifecycleManager {
 func (dm *DBLifecycleManager) setEnvVars() {
 	err := os.Setenv("DB_USER", dm.config.Database.User)
 	if err != nil {
-		log.WithError(err).Error("failed to set environment variable DB_USER")
+		dm.logger.WithError(err).Error("failed to set environment variable DB_USER")
 		return
 	}
 	err = os.Setenv("DB_PASSWORD", dm.config.Database.Password)
 	if err != nil {
-		log.WithError(err).Error("failed to set environment variable DB_PASSWORD")
+		dm.logger.WithError(err).Error("failed to set environment variable DB_PASSWORD")
 		return
 	}
 	err = os.Setenv("DB_NAME", dm.config.Database.Name)
 	if err != nil {
-		log.WithError(err).Error("failed to set environment variable DB_NAME")
+		dm.logger.WithError(err).Error("failed to set environment variable DB_NAME")
 		return
 	}
 }

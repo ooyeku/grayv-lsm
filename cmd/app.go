@@ -66,7 +66,7 @@ var deleteAppCmd = &cobra.Command{
 }
 
 func init() {
-	appCreator = app.NewAppCreator(log)
+	appCreator = app.NewAppCreator()
 
 	appCmd.AddCommand(createAppCmd)
 	appCmd.AddCommand(listAppsCmd)
