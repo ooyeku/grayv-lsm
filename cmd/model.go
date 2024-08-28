@@ -64,18 +64,6 @@ func runCreateModel(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	modelDef, err := modelManager.GetModel(modelName)
-	if err != nil {
-		log.WithError(err).Errorf("Failed to get model %s", modelName)
-		return
-	}
-
-	err = model.GenerateModelFile(modelDef)
-	if err != nil {
-		log.WithError(err).Errorf("Failed to generate model file for %s", modelName)
-		return
-	}
-
 	log.Infof("Model %s created successfully", modelName)
 }
 

@@ -3,12 +3,14 @@ package model
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+	"github.com/sirupsen/logrus"
 	"os"
 	"sort"
 	"strings"
 	"time"
 )
+
+var logger = logrus.New()
 
 // Model represents a basic model structure with common fields
 type Model struct {
@@ -121,9 +123,7 @@ func NewModelManager() *ModelManager {
 	mm := &ModelManager{
 		models: make(map[string]*ModelDefinition),
 	}
-	if err := mm.LoadModels(); err != nil {
-		log.Printf("Error loading models: %v", err)
-	}
+	mm.loadModels()
 	return mm
 }
 
@@ -134,7 +134,7 @@ func (mm *ModelManager) CreateModel(name string, fields []Field) error {
 	}
 
 	mm.models[name] = NewModelDefinition(name, fields)
-	return mm.SaveModels()
+	return mm.saveModels()
 }
 
 // UpdateModel updates an existing model
@@ -235,7 +235,7 @@ func getSQLType(goType string) string {
 
 const modelStorageFile = "models.json"
 
-func (mm *ModelManager) SaveModels() error {
+func (mm *ModelManager) saveModels() error {
 	data, err := json.Marshal(mm.models)
 	if err != nil {
 		return err
@@ -243,13 +243,17 @@ func (mm *ModelManager) SaveModels() error {
 	return os.WriteFile(modelStorageFile, data, 0644)
 }
 
-func (mm *ModelManager) LoadModels() error {
+func (mm *ModelManager) loadModels() {
 	data, err := os.ReadFile(modelStorageFile)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return nil // File doesn't exist, which is fine for a new setup
+		if !os.IsNotExist(err) {
+			logger.WithError(err).Error("Failed to read models file")
 		}
-		return err
+		return
 	}
-	return json.Unmarshal(data, &mm.models)
+
+	err = json.Unmarshal(data, &mm.models)
+	if err != nil {
+		logger.WithError(err).Error("Failed to unmarshal models")
+	}
 }
