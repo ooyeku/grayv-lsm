@@ -38,12 +38,16 @@ func GenerateModelFile(modelDef *ModelDefinition) error {
 		return fmt.Errorf("error parsing template: %w", err)
 	}
 
-	modelsDir := "models"
-	if err := os.MkdirAll(modelsDir, 0755); err != nil {
-		return fmt.Errorf("error creating models directory: %w", err)
+	outputDir := modelDef.OutputDir
+	if outputDir == "" {
+		outputDir = "models"
 	}
 
-	fileName := filepath.Join(modelsDir, strings.ToLower(modelDef.Name)+".go")
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("error creating output directory: %w", err)
+	}
+
+	fileName := filepath.Join(outputDir, strings.ToLower(modelDef.Name)+".go")
 	file, err := os.Create(fileName)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)

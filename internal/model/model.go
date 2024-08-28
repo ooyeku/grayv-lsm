@@ -101,8 +101,9 @@ func NewField(name, fieldType, tag string, isNull, isPrimary bool) Field {
 
 // ModelDefinition represents the structure of a model
 type ModelDefinition struct {
-	Name   string
-	Fields []Field
+	Name      string
+	Fields    []Field
+	OutputDir string
 }
 
 // NewModelDefinition creates a new ModelDefinition instance
@@ -256,4 +257,9 @@ func (mm *ModelManager) loadModels() {
 	if err != nil {
 		logger.WithError(err).Error("Failed to unmarshal models")
 	}
+}
+
+// Add this method to your ModelDefinition struct
+func (m *ModelDefinition) SetOutputDir(dir string) {
+	m.OutputDir = dir
 }

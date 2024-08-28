@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/ooyeku/grav-lsm/internal/model"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var modelManager *model.ModelManager
@@ -48,6 +50,8 @@ func init() {
 	createModelCmd.Flags().StringSlice("fields", []string{}, "Comma-separated list of fields in the format name:type")
 	updateModelCmd.Flags().StringSlice("add-fields", []string{}, "Comma-separated list of fields to add in the format name:type")
 	updateModelCmd.Flags().StringSlice("remove-fields", []string{}, "Comma-separated list of field names to remove")
+
+	generateModelCmd.Flags().String("app", "", "Name of the Grav app to generate the model in")
 
 	modelCmd.AddCommand(createModelCmd)
 	modelCmd.AddCommand(updateModelCmd)
@@ -129,11 +133,24 @@ func runListModels(cmd *cobra.Command, args []string) {
 
 func runGenerateModel(cmd *cobra.Command, args []string) {
 	modelName := args[0]
+	appName, _ := cmd.Flags().GetString("app")
 
 	modelDef, err := modelManager.GetModel(modelName)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get model %s", modelName)
 		return
+	}
+
+	var outputDir string
+	if appName != "" {
+		outputDir = filepath.Join(appName+"_grav", "internal", "models")
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			log.WithError(err).Errorf("Failed to create directory for app %s", appName)
+			return
+		}
+
+		// Set the output directory for the model generator
+		modelDef.SetOutputDir(outputDir)
 	}
 
 	err = model.GenerateModelFile(modelDef)
@@ -142,7 +159,11 @@ func runGenerateModel(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	log.Infof("Model file for %s generated successfully", modelName)
+	if appName != "" {
+		log.Infof("Model file for %s generated successfully in %s", modelName, outputDir)
+	} else {
+		log.Infof("Model file for %s generated successfully", modelName)
+	}
 }
 
 func parseFields(fields []string) ([]model.Field, error) {
