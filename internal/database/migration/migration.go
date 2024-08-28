@@ -12,12 +12,23 @@ import (
 	"time"
 )
 
+// logger is a pointer to a logrus.Logger instance. It is used for logging messages and
+// configuring log settings.
 var logger *logrus.Logger
 
+// init initializes the logger variable by assigning a new instance of logrus.Logger to it.
 func init() {
 	logger = logrus.New()
 }
 
+// Migration represents a database migration.
+//
+// A Migration struct contains the following fields:
+//   - Version: int64 - the version number of the migration
+//   - Name: string - the name of the migration
+//   - UpSQL: string - the SQL code to apply the migration
+//   - DownSQL: string - the SQL code to rollback the migration
+//   - Timestamp: time.Time - the timestamp when the migration was created
 type Migration struct {
 	Version   int64
 	Name      string
@@ -26,16 +37,51 @@ type Migration struct {
 	Timestamp time.Time
 }
 
+// Migrator represents a database migrator that can apply and rollback migrations.
+// It keeps track of applied migrations and provides methods for running and undoing
+// migrations.
+//
+// Fields:
+// - db: The *sql.DB instance representing the database connection.
+// - migrations: A slice of *Migration instances representing the available migrations.
+// - logger: The *logrus.Logger instance used for logging migration events.
+//
+// Usage:
+// - To create a new Migrator instance, use the NewMigrator function.
+// - To load migrations from the embedded files, use the LoadMigrations method.
+// - To apply all available migrations that haven't been applied yet, use the Migrate method.
+// - To rollback a specific number of applied migrations, use the Rollback method.
+//
+// Example usage:
+//
+//	db, _ := sql.Open("postgres", "postgres://user:pass@localhost/db")
+//	logger := logrus.New()
+//	migrator := NewMigrator(db, logger)
+//	migrator.LoadMigrations()
+//	err := migrator.Migrate()
+//	err = migrator.Rollback(1)
 type Migrator struct {
 	db         *sql.DB
 	migrations []*Migration
 	logger     *logrus.Logger
 }
 
+// NewMigrator creates a new instance of Migrator.
+// It accepts a *sql.DB database connection and a *logrus.Logger logger.
+// Returns a pointer to Migrator struct.
+// Example usage:
+//
+//	migrator := migration.NewMigrator(conn.GetDB(), log)
 func NewMigrator(db *sql.DB, logger *logrus.Logger) *Migrator {
 	return &Migrator{db: db, logger: logger}
 }
 
+// LoadMigrations reads and loads the embedded migration files from the "migrations" directory.
+// It reads the files with the ".sql" extension,
+// parses each migration file,
+// sorts the migrations based on their version,
+// and appends them to the Migrator's migrations slice.
+// Returns an error if there is any issue reading, parsing, or sorting the migrations.
 func (m *Migrator) LoadMigrations() error {
 	entries, err := embedded.EmbeddedFiles.ReadDir("migrations")
 	if err != nil {
@@ -63,6 +109,14 @@ func (m *Migrator) LoadMigrations() error {
 	return nil
 }
 
+// parseMigrationContent parses the content of a migration file and returns a *Migration object
+// containing the parsed information. The function splits the content into two parts, using "-- Down"
+// as the delimiter. If the content does not have exactly two parts, it returns an error. It then trims
+// the whitespace from both parts and assigns them to the UpSQL and DownSQL fields of the *Migration object.
+// It also calls parseVersionFromFilename to parse the version from the given filename. If there is an error
+// parsing the version, it returns an error. Finally, it initializes a new *Migration object with the parsed
+// information, including the version, filename, timestamp (set to the current time), and returns it along
+// with nil error.
 func parseMigrationContent(filename, content string) (*Migration, error) {
 	parts := strings.Split(content, "-- Down")
 	if len(parts) != 2 {
@@ -86,6 +140,11 @@ func parseMigrationContent(filename, content string) (*Migration, error) {
 	}, nil
 }
 
+// Migrate applies pending migrations to the database.
+// It creates the migrations table if it does not exist.
+// It retrieves the list of applied migrations from the database.
+// For each migration that has not been applied, it runs the migration.
+// Returns an error if any step fails.
 func (m *Migrator) Migrate() error {
 	if err := m.createMigrationsTable(); err != nil {
 		return fmt.Errorf("failed to create migrations table: %w", err)
@@ -107,6 +166,13 @@ func (m *Migrator) Migrate() error {
 	return nil
 }
 
+// Rollback rolls back a specified number of migrations by executing their corresponding down SQL statements.
+// It retrieves the list of applied migrations, finds the migration to be rolled back,
+// and then executes the rollback process by running the migration's down SQL statement.
+// The steps parameter determines the number of migrations to roll back.
+// If steps is less than or equal to 0, the function returns immediately without performing any rollback operations.
+// If there are fewer applied migrations than the specified steps, it only rolls back the available migrations.
+// The function returns an error if it encounters any issues during the rollback process.
 func (m *Migrator) Rollback(steps int) error {
 	if steps <= 0 {
 		return nil
@@ -130,6 +196,10 @@ func (m *Migrator) Rollback(steps int) error {
 	return nil
 }
 
+// createMigrationsTable creates a table called "migrations" in the database if it does not exist already.
+// The table has three columns: "version" of type BIGINT and primary key, "name" of type TEXT and not null,
+// and "applied_at" of type TIMESTAMP WITH TIME ZONE with a default value of the current timestamp.
+// This method returns an error if there was a problem executing the SQL statement to create the table.
 func (m *Migrator) createMigrationsTable() error {
 	_, err := m.db.Exec(`
 		CREATE TABLE IF NOT EXISTS migrations (
@@ -141,6 +211,16 @@ func (m *Migrator) createMigrationsTable() error {
 	return err
 }
 
+// runMigration applies a migration to the database using a transaction.
+// It executes the UpSQL statement of the migration and inserts a record
+// of the migration into the migrations table.
+// If an error occurs at any step, the transaction is rolled back.
+//
+// Parameters:
+// - migration: The migration to be applied.
+//
+// Returns:
+// - error: An error if any occurred during the migration process.
 func (m *Migrator) runMigration(migration *Migration) error {
 	tx, err := m.db.Begin()
 	if err != nil {
@@ -165,6 +245,10 @@ func (m *Migrator) runMigration(migration *Migration) error {
 	return nil
 }
 
+// rollbackMigration rolls back a migration by executing the DownSQL statement and removing the migration record from the database.
+// It starts a transaction, rolls it back in case of an error, and commits the rollback if successful.
+// It logs the name of the rolled-back migration.
+// It returns an error if any operation fails.
 func (m *Migrator) rollbackMigration(migration *Migration) error {
 	tx, err := m.db.Begin()
 	if err != nil {
@@ -188,6 +272,10 @@ func (m *Migrator) rollbackMigration(migration *Migration) error {
 	return nil
 }
 
+// getAppliedMigrations queries the migrations table in the database and retrieves
+// the versions of the applied migrations, ordered in descending order. It returns
+// a slice of int64 representing the versions and an error if there was any issue
+// querying the database.
 func (m *Migrator) getAppliedMigrations() ([]int64, error) {
 	rows, err := m.db.Query("SELECT version FROM migrations ORDER BY version DESC")
 	if err != nil {
@@ -207,6 +295,8 @@ func (m *Migrator) getAppliedMigrations() ([]int64, error) {
 	return appliedMigrations, nil
 }
 
+// findMigration searches for a migration with the specified version in the list of migrations.
+// It returns a pointer to the found migration, or nil if no migration with that version was found.
 func (m *Migrator) findMigration(version int64) *Migration {
 	for _, migration := range m.migrations {
 		if migration.Version == version {
@@ -216,6 +306,10 @@ func (m *Migrator) findMigration(version int64) *Migration {
 	return nil
 }
 
+// parseVersionFromFilename extracts the version number from a migration filename.
+// It splits the filename by '_' and checks if there are at least two parts.
+// If the version part cannot be converted to an int64, it returns an error.
+// Returns the parsed version number as an int64 and nil or an error if the format is invalid.
 func parseVersionFromFilename(filename string) (int64, error) {
 	parts := strings.Split(filename, "_")
 	if len(parts) < 2 {
@@ -230,6 +324,13 @@ func parseVersionFromFilename(filename string) (int64, error) {
 	return version, nil
 }
 
+// contains checks if an item is present in a slice of int64 values.
+// It iterates through the slice and returns true if the item is found,
+// otherwise it returns false.
+// The function takes two parameters:
+// - slice: the slice of int64 values to be searched
+// - item: the item to be checked if it is present in the slice
+// It returns a boolean value indicating whether the item is present in the slice or not.
 func contains(slice []int64, item int64) bool {
 	for _, v := range slice {
 		if v == item {
