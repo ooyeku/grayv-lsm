@@ -3,14 +3,12 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/ooyeku/grav-lsm/internal/model"
 	"github.com/ooyeku/grav-lsm/internal/orm"
 	"github.com/ooyeku/grav-lsm/pkg/config"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 // modelManager is a pointer to an instance of the ModelManager struct. ModelManager is responsible for managing model definitions,
@@ -195,39 +193,47 @@ func runUpdateModel(cmd *cobra.Command, args []string) {
 	}
 	defer rows.Close()
 
-	var modelFields []model.Field
-	err = json.Unmarshal(fieldsJSON, &modelFields)
-	if err != nil {
-		log.WithError(err).Error("Failed to unmarshal model fields")
-		return
-	}
-
-	if len(addFields) > 0 {
-		newFields, err := parseFields(addFields)
+	for rows.Next() {
+		err := rows.Scan(&fieldsJSON)
 		if err != nil {
-			log.WithError(err).Error("Failed to parse new fields")
+			log.WithError(err).Error("Failed to scan model fields")
 			return
 		}
-		modelFields = append(modelFields, newFields...)
-	}
 
-	if len(removeFields) > 0 {
-		modelFields = removeFieldsFromModel(modelFields, removeFields)
-	}
+		var modelFields []model.Field
+		err = json.Unmarshal(fieldsJSON, &modelFields)
+		if err != nil {
+			log.WithError(err).Error("Failed to unmarshal model fields")
+			return
+		}
 
-	updatedFieldsJSON, err := json.Marshal(modelFields)
-	if err != nil {
-		log.WithError(err).Error("Failed to marshal updated model fields")
-		return
-	}
+		if len(addFields) > 0 {
+			newFields, err := parseFields(addFields)
+			if err != nil {
+				log.WithError(err).Error("Failed to parse new fields")
+				return
+			}
+			modelFields = append(modelFields, newFields...)
+		}
 
-	_, err = conn.Query("UPDATE models SET fields = $1 WHERE name = $2", updatedFieldsJSON, modelName)
-	if err != nil {
-		log.WithError(err).Errorf("Failed to update model %s", modelName)
-		return
-	}
+		if len(removeFields) > 0 {
+			modelFields = removeFieldsFromModel(modelFields, removeFields)
+		}
 
-	log.Infof("Model %s updated successfully", modelName)
+		updatedFieldsJSON, err := json.Marshal(modelFields)
+		if err != nil {
+			log.WithError(err).Error("Failed to marshal updated model fields")
+			return
+		}
+
+		_, err = conn.Query("UPDATE models SET fields = $1 WHERE name = $2", updatedFieldsJSON, modelName)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to update model %s", modelName)
+			return
+		}
+
+		log.Infof("Model %s updated successfully", modelName)
+	}
 }
 
 // runListModels lists all available models. It retrieves the list of models from the ModelManager and
@@ -240,35 +246,40 @@ func runListModels(cmd *cobra.Command, args []string) {
 	}
 	defer conn.Close()
 
-	query := "SELECT name, fields FROM models"
+	models, err := listModelsFromDB(conn)
+	if err != nil {
+		log.WithError(err).Error("Failed to list models")
+		return
+	}
+
+	if len(models) == 0 {
+		log.Info("No models found.")
+	} else {
+		log.Info("Available models:")
+		for _, m := range models {
+			log.Infof("- %s", m)
+		}
+	}
+}
+
+func listModelsFromDB(conn *orm.Connection) ([]string, error) {
+	query := "SELECT name FROM models"
 	rows, err := conn.Query(query)
 	if err != nil {
-		log.WithError(err).Error("Failed to query models")
-		return
+		return nil, err
 	}
 	defer rows.Close()
 
 	var models []string
 	for rows.Next() {
 		var name string
-		var fieldsJSON []byte
-		err := rows.Scan(&name, &fieldsJSON)
-		if err != nil {
-			log.WithError(err).Error("Failed to scan model row")
-			continue
+		if err := rows.Scan(&name); err != nil {
+			return nil, err
 		}
 		models = append(models, name)
 	}
 
-	if len(models) == 0 {
-		log.Info("No models found.")
-		return
-	}
-
-	log.Info("Available models:")
-	for _, m := range models {
-		log.Infof("- %s", m)
-	}
+	return models, rows.Err()
 }
 
 // runGenerateModel generates a model file based on the provided model name and app name.
@@ -277,46 +288,52 @@ func runListModels(cmd *cobra.Command, args []string) {
 // success message along with the output directory if applicable.
 func runGenerateModel(cmd *cobra.Command, args []string) {
 	modelName := args[0]
-	appName, _ := cmd.Flags().GetString("app")
 
-	modelDef, err := modelManager.GetModel(modelName)
+	conn, err := getDBConnection()
 	if err != nil {
-		log.WithError(err).Errorf("Failed to get model %s", modelName)
+		log.WithError(err).Error("Failed to get database connection")
 		return
 	}
+	defer conn.Close()
 
-	var outputDir string
-	if appName != "" {
-		outputDir = filepath.Join(appName+"_grav", "internal", "models")
-		if err := os.MkdirAll(outputDir, 0755); err != nil {
-			log.WithError(err).Errorf("Failed to create directory for app %s", appName)
+	var fieldsJSON []byte
+	rows, err := conn.Query("SELECT fields FROM models WHERE name = $1", modelName)
+	if err != nil {
+		log.WithError(err).Errorf("Failed to get model %s from database", modelName)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&fieldsJSON)
+		if err != nil {
+			log.WithError(err).Error("Failed to scan model fields")
 			return
 		}
 
-		// Set the output directory for the model generator
-		modelDef.SetOutputDir(outputDir)
-	}
+		var modelFields []model.Field
+		err = json.Unmarshal(fieldsJSON, &modelFields)
+		if err != nil {
+			log.WithError(err).Error("Failed to unmarshal model fields")
+			return
+		}
 
-	err = model.GenerateModelFile(modelDef)
-	if err != nil {
-		log.WithError(err).Errorf("Failed to generate model file for %s", modelName)
-		return
-	}
+		modelDef := &model.ModelDefinition{
+			Name:   modelName,
+			Fields: modelFields,
+		}
 
-	if appName != "" {
-		log.Infof("Model file for %s generated successfully in %s", modelName, outputDir)
-	} else {
-		log.Infof("Model file for %s generated successfully", modelName)
+		err = model.GenerateModelFile(modelDef)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to generate model file for %s", modelName)
+			return
+		}
+
+		log.Infof("Model %s generated successfully", modelName)
 	}
 }
 
 // parseFields parses the given list of fields and returns a slice of model.Field.
-// It splits each field by ":" and creates a model.NewField with the parts.
-// If a field does not have exactly two parts, it returns an error with the invalid field format message.
-// The returned model.Field is populated with the name, fieldType, tag, isNull, and isPrimary values.
-// The name is the first part of the field, the fieldType is the second part, and the tag is generated
-// by using the name converted to lowercase as the json tag value. The isNull flag is set to false,
-// and the isPrimary flag is set to true if the name is either "ID", "Id", or "id".
 // If no error occurs, it returns the slice of model.Field and a nil error. Otherwise, it returns nil and an error.
 func parseFields(fields []string) ([]model.Field, error) {
 	var modelFields []model.Field

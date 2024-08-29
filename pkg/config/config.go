@@ -58,6 +58,8 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
+	setDefaults(&cfg)
+
 	return &cfg, nil
 }
 
