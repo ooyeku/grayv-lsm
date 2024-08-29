@@ -4,12 +4,15 @@ Grav LSM (Lifecycle Management) is a CLI tool for managing the lifecycle of Grav
 
 ## Table of Contents
 
-1. [Installation](#installation)
-2. [Configuration](#configuration)
-3. [Managing Apps](#managing-apps)
-4. [Database Management](#database-management)
-5. [Model Management](#model-management)
-6. [Migrations and Seeding](#migrations-and-seeding)
+- [Grav LSM User Guide](#grav-lsm-user-guide)
+  - [Table of Contents](#table-of-contents)
+  - [1. Installation](#1-installation)
+  - [2. Configuration](#2-configuration)
+  - [3. Managing Apps](#3-managing-apps)
+  - [4. Database Management](#4-database-management)
+  - [5. Model Management](#5-model-management)
+  - [6. Migrations and Seeding](#6-migrations-and-seeding)
+  - [7. ORM Management](#7-orm-management)
 
 ## 1. Installation
 
@@ -136,6 +139,20 @@ Grav LSM supports database migrations and seeding.
 - Seed the database:
   ```
   grav-lsm db seed
+  ```
+
+## 7. ORM Management
+
+Grav LSM allows you to manage the ORM system.
+
+- Create a new user:
+  ```
+  grav-lsm orm create-user --username "admin" --email "admin@example.com" --password "admin"
+  ```
+
+- Raw SQL query:
+  ```
+  grav-lsm orm query "SELECT * FROM users"
   ```
 
 Remember to run `grav-lsm --help` or `grav-lsm [command] --help` for more information on available commands and their usage.

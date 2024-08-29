@@ -24,22 +24,22 @@ var queryCmd = &cobra.Command{
 	Run:   runQuery,
 }
 
-var insertUserCmd = &cobra.Command{
-	Use:   "insert-user",
-	Short: "Insert a new user into the database",
-	Run:   runInsertUser,
+var createUserCmd = &cobra.Command{
+	Use:   "create-user",
+	Short: "Create a new user in the database",
+	Run:   runCreateUser,
 }
 
 func init() {
 	ormCmd.AddCommand(queryCmd)
-	ormCmd.AddCommand(insertUserCmd)
+	ormCmd.AddCommand(createUserCmd)
 	RootCmd.AddCommand(ormCmd)
-	insertUserCmd.Flags().String("username", "", "Username for the new user")
-	insertUserCmd.Flags().String("email", "", "Email for the new user")
-	insertUserCmd.Flags().String("password", "", "Password for the new user")
-	insertUserCmd.MarkFlagRequired("username")
-	insertUserCmd.MarkFlagRequired("email")
-	insertUserCmd.MarkFlagRequired("password")
+	createUserCmd.Flags().String("username", "", "Username for the new user")
+	createUserCmd.Flags().String("email", "", "Email for the new user")
+	createUserCmd.Flags().String("password", "", "Password for the new user")
+	createUserCmd.MarkFlagRequired("username")
+	createUserCmd.MarkFlagRequired("email")
+	createUserCmd.MarkFlagRequired("password")
 }
 
 func runQuery(cmd *cobra.Command, args []string) {
@@ -102,7 +102,7 @@ func runQuery(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runInsertUser(cmd *cobra.Command, args []string) {
+func runCreateUser(cmd *cobra.Command, args []string) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.WithError(err).Error("Error loading config")
@@ -130,9 +130,9 @@ func runInsertUser(cmd *cobra.Command, args []string) {
 	query := "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3)"
 	_, err = conn.Query(query, username, email, hashedPassword)
 	if err != nil {
-		log.WithError(err).Error("Error inserting new user")
+		log.WithError(err).Error("Error creating new user")
 		return
 	}
 
-	log.Info("New user inserted successfully")
+	log.Info("New user created successfully")
 }
