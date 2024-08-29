@@ -150,6 +150,21 @@ Grav LSM allows you to manage the ORM system.
   grav-lsm orm create-user --username "admin" --email "admin@example.com" --password "admin"
   ```
 
+- List all users:
+  ```
+  grav-lsm orm list-users
+  ```
+
+- Delete a user:
+  ```
+  grav-lsm orm delete-user --id 1
+  ```
+
+- Update a user:
+  ```
+  grav-lsm orm update-user --id 1 --username "admin123" --email "admin123@example.com"
+  ```
+
 - Raw SQL query:
   ```
   grav-lsm orm query "SELECT * FROM users"
