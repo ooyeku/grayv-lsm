@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	"github.com/ooyeku/grav-lsm/internal/model"
+	"github.com/ooyeku/grav-lsm/internal/orm"
+	"github.com/ooyeku/grav-lsm/pkg/config"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -139,7 +142,21 @@ func runCreateModel(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	err = modelManager.CreateModel(modelName, modelFields)
+	conn, err := getDBConnection()
+	if err != nil {
+		log.WithError(err).Error("Failed to get database connection")
+		return
+	}
+	defer conn.Close()
+
+	fieldsJSON, err := json.Marshal(modelFields)
+	if err != nil {
+		log.WithError(err).Error("Failed to marshal model fields")
+		return
+	}
+
+	query := "INSERT INTO models (name, fields) VALUES ($1, $2)"
+	_, err = conn.Query(query, modelName, fieldsJSON)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to create model %s", modelName)
 		return
@@ -163,9 +180,25 @@ func runUpdateModel(cmd *cobra.Command, args []string) {
 	addFields, _ := cmd.Flags().GetStringSlice("add-fields")
 	removeFields, _ := cmd.Flags().GetStringSlice("remove-fields")
 
-	modelDef, err := modelManager.GetModel(modelName)
+	conn, err := getDBConnection()
+	if err != nil {
+		log.WithError(err).Error("Failed to get database connection")
+		return
+	}
+	defer conn.Close()
+
+	var fieldsJSON []byte
+	rows, err := conn.Query("SELECT fields FROM models WHERE name = $1", modelName)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get model %s", modelName)
+		return
+	}
+	defer rows.Close()
+
+	var modelFields []model.Field
+	err = json.Unmarshal(fieldsJSON, &modelFields)
+	if err != nil {
+		log.WithError(err).Error("Failed to unmarshal model fields")
 		return
 	}
 
@@ -175,22 +208,22 @@ func runUpdateModel(cmd *cobra.Command, args []string) {
 			log.WithError(err).Error("Failed to parse new fields")
 			return
 		}
-		modelDef.Fields = append(modelDef.Fields, newFields...)
+		modelFields = append(modelFields, newFields...)
 	}
 
 	if len(removeFields) > 0 {
-		modelDef.Fields = removeFieldsFromModel(modelDef.Fields, removeFields)
+		modelFields = removeFieldsFromModel(modelFields, removeFields)
 	}
 
-	err = modelManager.UpdateModel(modelName, modelDef.Fields)
+	updatedFieldsJSON, err := json.Marshal(modelFields)
 	if err != nil {
-		log.WithError(err).Errorf("Failed to update model %s", modelName)
+		log.WithError(err).Error("Failed to marshal updated model fields")
 		return
 	}
 
-	err = model.GenerateModelFile(modelDef)
+	_, err = conn.Query("UPDATE models SET fields = $1 WHERE name = $2", updatedFieldsJSON, modelName)
 	if err != nil {
-		log.WithError(err).Errorf("Failed to generate updated model file for %s", modelName)
+		log.WithError(err).Errorf("Failed to update model %s", modelName)
 		return
 	}
 
@@ -200,7 +233,33 @@ func runUpdateModel(cmd *cobra.Command, args []string) {
 // runListModels lists all available models. It retrieves the list of models from the ModelManager and
 // logs them in the output. If no models are found, it logs a message indicating that no models were found.
 func runListModels(cmd *cobra.Command, args []string) {
-	models := modelManager.ListModels()
+	conn, err := getDBConnection()
+	if err != nil {
+		log.WithError(err).Error("Failed to get database connection")
+		return
+	}
+	defer conn.Close()
+
+	query := "SELECT name, fields FROM models"
+	rows, err := conn.Query(query)
+	if err != nil {
+		log.WithError(err).Error("Failed to query models")
+		return
+	}
+	defer rows.Close()
+
+	var models []string
+	for rows.Next() {
+		var name string
+		var fieldsJSON []byte
+		err := rows.Scan(&name, &fieldsJSON)
+		if err != nil {
+			log.WithError(err).Error("Failed to scan model row")
+			continue
+		}
+		models = append(models, name)
+	}
+
 	if len(models) == 0 {
 		log.Info("No models found.")
 		return
@@ -303,4 +362,18 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func getDBConnection() (*orm.Connection, error) {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error loading config: %w", err)
+	}
+
+	conn, err := orm.NewConnection(&cfg.Database)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to database: %w", err)
+	}
+
+	return conn, nil
 }
