@@ -14,35 +14,40 @@ Grav LSM is a powerful CLI tool for managing the lifecycle of Grav Apps. It prov
 
 Ensure you have Go installed on your system, then run:
 
+```bash
+go install github.com/ooyeku/grav-lsm
 ```
-go get github.com/ooyeku/grav-lsm
+
+Ensure $GOPATH/bin is in your $PATH.
+```bash
+   export PATH=$PATH:$(go env GOPATH)/bin
 ```
 
 ## Quick Start
 
 1. Create a new Grav app:
-   ```
+   ```bash
    grav-lsm app create myapp
    ```
 
 2. Build and start the database:
-   ```
+   ```bash
    grav-lsm db build
    grav-lsm db start
    ```
 
 3. Create a model:
-   ```
+   ```bash
    grav-lsm model create User --fields "name:string,email:string,age:int"
    ```
 
 4. Generate model code:
-   ```
+   ```bash
    grav-lsm model generate User --app myapp
    ```
 
 5. Run migrations:
-   ```
+   ```bash
    grav-lsm db migrate
    ```
 
