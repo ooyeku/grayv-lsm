@@ -120,7 +120,7 @@ func testDatabaseLifecycle(t *testing.T) {
 	}
 
 	// Wait for the database to be ready
-	if err := waitForDatabase(t); err != nil {
+	if err := waitForDatabaseReady(); err != nil {
 		t.Fatalf("Database failed to become ready: %v", err)
 	}
 
@@ -136,7 +136,8 @@ func testDatabaseLifecycle(t *testing.T) {
 	}
 }
 
-func waitForDatabase(t *testing.T) error {
+// Rename the duplicate function
+func waitForDatabaseReady() error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
@@ -157,6 +158,10 @@ func waitForDatabase(t *testing.T) error {
 		time.Sleep(1 * time.Second)
 	}
 	return fmt.Errorf("database did not become ready in time")
+}
+
+func waitForDatabaseReadyBenchmark(b *testing.B) error {
+	return waitForDatabaseReady()
 }
 
 func setupDatabaseSchema(t *testing.T) error {
@@ -232,4 +237,158 @@ func testORMOperations(t *testing.T) {
 		t.Fatalf("Failed to execute ORM query: %v", err)
 	}
 
+}
+
+func setupDatabaseSchemaForBenchmark(b *testing.B) error {
+	// Reuse the existing setupDatabaseSchema function
+	return setupDatabaseSchema(&testing.T{})
+}
+
+func BenchmarkDatabaseLifecycle(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		// Test database build
+		cmd.RootCmd.SetArgs([]string{"db", "build"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to build database: %v", err)
+		}
+
+		// Test database start
+		cmd.RootCmd.SetArgs([]string{"db", "start"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to start database: %v", err)
+		}
+
+		// Wait for the database to be ready
+		if err := waitForDatabaseReadyBenchmark(b); err != nil {
+			b.Fatalf("Database failed to become ready: %v", err)
+		}
+
+		// Set up the database schema
+		if err := setupDatabaseSchemaForBenchmark(b); err != nil {
+			b.Fatalf("Failed to set up database schema: %v", err)
+		}
+
+		// Test database status
+		cmd.RootCmd.SetArgs([]string{"db", "status"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to get database status: %v", err)
+		}
+
+		// Test database stop
+		cmd.RootCmd.SetArgs([]string{"db", "stop"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to stop database: %v", err)
+		}
+
+		// Test database remove
+		cmd.RootCmd.SetArgs([]string{"db", "remove"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to remove database: %v", err)
+		}
+	}
+}
+
+func BenchmarkDatabaseBuild(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cmd.RootCmd.SetArgs([]string{"db", "build"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to build database: %v", err)
+		}
+	}
+}
+
+func BenchmarkDatabaseStart(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cmd.RootCmd.SetArgs([]string{"db", "start"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to start database: %v", err)
+		}
+	}
+}
+
+func BenchmarkModelCommands(b *testing.B) {
+	// setup database
+	cmd.RootCmd.SetArgs([]string{"db", "build"})
+	if err := cmd.RootCmd.Execute(); err != nil {
+		b.Fatalf("Failed to build database: %v", err)
+	}
+
+	cmd.RootCmd.SetArgs([]string{"db", "start"})
+	if err := cmd.RootCmd.Execute(); err != nil {
+		b.Fatalf("Failed to start database: %v", err)
+	}
+	for i := 0; i < b.N; i++ {
+		// Test model creation
+		cmd.RootCmd.SetArgs([]string{"model", "create", "TestModel", "--fields", "name:string,age:int"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to create model: %v", err)
+		}
+
+		// Test model list
+		cmd.RootCmd.SetArgs([]string{"model", "list"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to list models: %v", err)
+		}
+
+		// Test model update
+		cmd.RootCmd.SetArgs([]string{"model", "update", "TestModel", "--add-fields", "email:string"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to update model: %v", err)
+		}
+
+		// Test model generation
+		cmd.RootCmd.SetArgs([]string{"model", "generate", "TestModel"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to generate model: %v", err)
+		}
+	}
+}
+
+func BenchmarkDatabaseStop(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cmd.RootCmd.SetArgs([]string{"db", "stop"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to stop database: %v", err)
+		}
+	}
+}
+
+func BenchmarkDatabaseRemove(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cmd.RootCmd.SetArgs([]string{"db", "remove"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to remove database: %v", err)
+		}
+	}
+}
+
+func BenchmarkDatabaseStatus(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cmd.RootCmd.SetArgs([]string{"db", "status"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to get database status: %v", err)
+		}
+	}
+}
+
+func BenchmarkAppCommands(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		// Test app creation
+		cmd.RootCmd.SetArgs([]string{"app", "create", "TestApp"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to create app: %v", err)
+		}
+
+		// Test app list
+		cmd.RootCmd.SetArgs([]string{"app", "list"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to list apps: %v", err)
+		}
+
+		// Test app deletion
+		cmd.RootCmd.SetArgs([]string{"app", "delete", "TestApp"})
+		if err := cmd.RootCmd.Execute(); err != nil {
+			b.Fatalf("Failed to delete app: %v", err)
+		}
+	}
 }
