@@ -45,6 +45,23 @@ Example `config.json`:
 }
 ```
 
+Configuration file can also be set using environment variables. The following environment variables are supported:
+
+- `DB_USER`
+- `DB_PASSWORD`
+- `DB_NAME`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_SSLMODE`
+
+Furthermore, the config command can be used to get and set the config values.
+
+```
+grav-lsm config get database.host
+grav-lsm config set database.host 127.0.0.1
+```
+
+
 ## 3. Managing Apps
 
 Grav LSM allows you to create, list, and delete Grav apps.
