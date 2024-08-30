@@ -13,13 +13,10 @@ import (
 // The `{{.Name}}` placeholder is replaced with the name of the model. The field names are transformed to title case using the `title` function.
 // The `json` struct tag is generated using the field name transformed to lowercase.
 // The `TableName` method is defined to return the lowercase plural form of the model name followed by "s".
-// The `PrimaryKey` method is defined to return "ID".
-// The `BeforeCreate`, `AfterCreate`, `BeforeUpdate`, `AfterUpdate`, `BeforeDelete`, and `AfterDelete` methods are defined as specified in the `ModelInterface`.
 const modelTemplate = `package models
 
 import (
 	"github.com/ooyeku/grav-lsm/internal/model"
-	"time"
 )
 
 type {{.Name}} struct {
@@ -31,37 +28,6 @@ type {{.Name}} struct {
 
 func ({{.Name | firstLetter}} *{{.Name}}) TableName() string {
 	return "{{.Name | toLower}}s"
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) PrimaryKey() string {
-	return "ID"
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) BeforeCreate() error {
-	{{.Name | firstLetter}}.CreatedAt = time.Now()
-	{{.Name | firstLetter}}.UpdatedAt = time.Now()
-	return nil
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) AfterCreate() error {
-	return nil
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) BeforeUpdate() error {
-	{{.Name | firstLetter}}.UpdatedAt = time.Now()
-	return nil
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) AfterUpdate() error {
-	return nil
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) BeforeDelete() error {
-	return nil
-}
-
-func ({{.Name | firstLetter}} *{{.Name}}) AfterDelete() error {
-	return nil
 }
 `
 

@@ -19,9 +19,9 @@ Grav LSM (Lifecycle Management) is a CLI tool for managing the lifecycle of Grav
 To install Grav LSM, follow these steps:
 
 1. Ensure you have Go installed on your system.
-2. Run the following command:
+2. Run the following command to install Grav LSM:
    ```
-   go get github.com/ooyeku/grav-lsm
+   go install github.com/ooyeku/grav-lsm@latest
    ```
 3. The `grav-lsm` command should now be available in your terminal.
 
