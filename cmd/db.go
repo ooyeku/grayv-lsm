@@ -85,10 +85,18 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the database Docker container",
 	Run: func(cmd *cobra.Command, args []string) {
-		if err := dbManager.StartContainer(); err != nil {
+		err := dbManager.StartContainer()
+		if err != nil {
 			log.WithError(err).Error("Error starting database container")
 		} else {
-			log.Info("Database container started successfully")
+			status, err := dbManager.GetStatus()
+			if err != nil {
+				log.WithError(err).Error("Error checking database status")
+			} else if strings.Contains(status, "Container is running") {
+				log.Info("Database container started successfully")
+			} else {
+				log.Error("Database container is not running after start attempt")
+			}
 		}
 	},
 }
@@ -143,22 +151,23 @@ var statusCmd = &cobra.Command{
 			return
 		}
 
+		log.Info(status)
+
 		if strings.Contains(status, "Container is running") {
 			conn, err := orm.NewConnection(&cfg.Database)
 			if err != nil {
 				log.WithError(err).Error("Error connecting to database")
 				return
 			}
-			defer func(conn *orm.Connection) {
-				err := conn.Close()
-				if err != nil {
-					log.WithError(err).Error("Error closing database connection")
-				}
-			}(conn)
+			defer conn.Close()
 
 			metrics, err := conn.GetDatabaseMetrics()
 			if err != nil {
-				log.WithError(err).Error("Error fetching database metrics")
+				if strings.Contains(err.Error(), "converting NULL to float64 is unsupported") {
+					log.Info("Database is empty. No tables or data found.")
+				} else {
+					log.WithError(err).Error("Error fetching database metrics")
+				}
 				return
 			}
 

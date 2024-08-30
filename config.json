@@ -5,7 +5,16 @@
         "Port": 5432,
         "User": "postgres",
         "Password": "postgres",
-        "Name": "gravorm",
-        "SSLMode": "disable"
+        "Name": "grav",
+        "SSLMode": "disable",
+        "ContainerName": "grav"
+    },
+    "Server": {
+        "Host": "0.0.0.0",
+        "Port": 8080
+    },
+    "Logging": {
+        "Level": "info",
+        "File": ""
     }
 }
