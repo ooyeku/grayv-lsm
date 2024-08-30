@@ -24,6 +24,7 @@ type Model struct {
 	ID        uint      `json:"id" gorm:"primaryKey"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    // Ensure the field is exported
 }
 
 // ModelInterface is an interface that represents a model in a database.
