@@ -1,13 +1,13 @@
 package config
 
 import (
-	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 )
 
 func TestLoadConfig(t *testing.T) {
-	os.Setenv("GRAVORM_CONFIG_PATH", "test_config.json")
+	os.Setenv("GRAVORM_CONFIG_PATH", "config.json")
 	config := &Config{
 		Database: DatabaseConfig{
 			Driver:   "test",
@@ -34,20 +34,21 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("wanted nil but got %v", err)
 	}
 
-	os.Remove("test_config.json")
+	os.Remove("config.json")
 }
 
 func TestSaveConfig(t *testing.T) {
-	os.Setenv("GRAVORM_CONFIG_PATH", "test_config.json")
+	os.Setenv("GRAVORM_CONFIG_PATH", "config.json")
 	config := &Config{
 		Database: DatabaseConfig{
-			Driver:   "test",
-			Host:     "test",
-			Port:     1000,
-			User:     "test",
-			Password: "test",
-			Name:     "test",
-			SSLMode:  "test",
+			Driver:        "test",
+			Host:          "test",
+			Port:          1000,
+			User:          "test",
+			Password:      "test",
+			Name:          "test",
+			SSLMode:       "test",
+			ContainerName: "test-container",
 		},
 		Server: ServerConfig{
 			Host: "test",
@@ -63,23 +64,18 @@ func TestSaveConfig(t *testing.T) {
 		t.Fatalf("wanted nil but got %v", err)
 	}
 
-	_, err = LoadConfig()
+	loadedConfig, err := LoadConfig()
 	if err != nil {
 		t.Fatalf("wanted nil but got %v", err)
 	}
 
-	var resultingConfig Config
-	file, _ := os.Open("test_config.json")
-	json.NewDecoder(file).Decode(&resultingConfig)
-
-	if config.Database.Driver != resultingConfig.Database.Driver ||
-		config.Server.Host != resultingConfig.Server.Host ||
-		config.Logging.Level != resultingConfig.Logging.Level {
-		t.Fatalf("Incorrect config file created")
+	if !reflect.DeepEqual(config, loadedConfig) {
+		t.Errorf("Saved and loaded configs do not match")
+		t.Errorf("Original: %+v", config)
+		t.Errorf("Loaded: %+v", loadedConfig)
 	}
 
-	file.Close()
-	os.Remove("test_config.json")
+	os.Remove("config.json")
 }
 
 func TestSetDefaults(t *testing.T) {

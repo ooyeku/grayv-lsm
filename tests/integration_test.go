@@ -1,5 +1,7 @@
 package tests
 
+// NOTE: To run this test suite, make sure any postgres instances are stopped and removed before running the tests.
+
 import (
 	"os"
 	"path/filepath"
