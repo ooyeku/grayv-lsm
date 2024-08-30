@@ -1,15 +1,19 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
 	"fmt"
 	"github.com/ooyeku/grav-lsm/pkg/config"
+	"github.com/ooyeku/grav-lsm/pkg/logging"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
 )
+
+var configLogger *logging.ColorfulLogger
+
+func init() {
+	configLogger = logging.NewColorfulLogger()
+}
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
@@ -41,34 +45,34 @@ func init() {
 func runConfigGet(cmd *cobra.Command, args []string) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
+		configLogger.Error(fmt.Sprintf("Error loading config: %v", err))
 		return
 	}
 
 	value := getConfigValue(cfg, args[0])
 	if value != "" {
-		fmt.Printf("%s: %s\n", args[0], value)
+		configLogger.Info(fmt.Sprintf("%s: %s", args[0], value))
 	} else {
-		fmt.Printf("Configuration key '%s' not found\n", args[0])
+		configLogger.Warn(fmt.Sprintf("Configuration key '%s' not found", args[0]))
 	}
 }
 
 func runConfigSet(cmd *cobra.Command, args []string) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
+		configLogger.Error(fmt.Sprintf("Error loading config: %v", err))
 		return
 	}
 
 	if setConfigValue(cfg, args[0], args[1]) {
 		err = config.SaveConfig(cfg)
 		if err != nil {
-			fmt.Printf("Error saving config: %v\n", err)
+			configLogger.Error(fmt.Sprintf("Error saving config: %v", err))
 			return
 		}
-		fmt.Printf("Configuration updated: %s = %s\n", args[0], args[1])
+		configLogger.Info(fmt.Sprintf("Configuration updated: %s = %s", args[0], args[1]))
 	} else {
-		fmt.Printf("Configuration key '%s' not found\n", args[0])
+		configLogger.Warn(fmt.Sprintf("Configuration key '%s' not found", args[0]))
 	}
 }
 
