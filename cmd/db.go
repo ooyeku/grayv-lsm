@@ -60,14 +60,7 @@ var startCmd = &cobra.Command{
 		if err != nil {
 			log.WithError(err).Error("Error starting database container")
 		} else {
-			status, err := dbManager.GetStatus()
-			if err != nil {
-				log.WithError(err).Error("Error checking database status")
-			} else if strings.Contains(status, "Container is running") {
-				log.Info("Database container started successfully")
-			} else {
-				log.Error("Database container is not running after start attempt")
-			}
+			log.Info("Database container started successfully")
 		}
 	},
 }

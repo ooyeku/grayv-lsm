@@ -27,6 +27,7 @@ type DatabaseConfig struct {
 	Name          string
 	SSLMode       string
 	ContainerName string
+	Image         string
 }
 
 // ServerConfig represents the configuration for a server, including the host and port it is running on.
@@ -96,7 +97,10 @@ func setDefaults(config *Config) {
 		config.Logging.Level = "info"
 	}
 	if config.Database.ContainerName == "" {
-		config.Database.ContainerName = "gravorm-db"
+		config.Database.ContainerName = "grayv-db"
+	}
+	if config.Database.Image == "" {
+		config.Database.Image = "grayv-db"
 	}
 }
 

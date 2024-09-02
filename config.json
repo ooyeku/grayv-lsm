@@ -5,9 +5,9 @@
         "Port": 5432,
         "User": "postgres",
         "Password": "postgres",
-        "Name": "grav",
+        "Name": "grayv",
         "SSLMode": "disable",
-        "ContainerName": "grav"
+        "ContainerName": "grayv-db"
     },
     "Server": {
         "Host": "0.0.0.0",
