@@ -3,7 +3,7 @@ package migration
 import (
 	"database/sql"
 	"fmt"
-	"github.com/ooyeku/grav-lsm/embedded"
+	"github.com/ooyeku/grayv-lsm/embedded"
 	"github.com/sirupsen/logrus"
 	"path/filepath"
 	"sort"

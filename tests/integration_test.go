@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"fmt"
-	"github.com/ooyeku/grav-lsm/cmd"
-	"github.com/ooyeku/grav-lsm/internal/orm"
-	"github.com/ooyeku/grav-lsm/pkg/config"
+	"github.com/ooyeku/grayv-lsm/cmd"
+	"github.com/ooyeku/grayv-lsm/internal/orm"
+	"github.com/ooyeku/grayv-lsm/pkg/config"
 )
 
 func TestMain(m *testing.M) {

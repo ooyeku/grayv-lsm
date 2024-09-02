@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ooyeku/grav-lsm/embedded"
+	"github.com/ooyeku/grayv-lsm/embedded"
 )
 
 // Config represents the configuration settings for the application.

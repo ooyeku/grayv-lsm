@@ -15,9 +15,6 @@ import (
 // The `TableName` method is defined to return the lowercase plural form of the model name followed by "s".
 const modelTemplate = `package models
 
-import (
-	"github.com/ooyeku/grav-lsm/internal/model"
-)
 
 type {{.Name}} struct {
 	model.DefaultModel

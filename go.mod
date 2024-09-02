@@ -1,4 +1,4 @@
-module github.com/ooyeku/grav-lsm
+module github.com/ooyeku/grayv-lsm
 
 go 1.22.6
 

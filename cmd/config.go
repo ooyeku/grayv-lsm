@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/ooyeku/grav-lsm/pkg/config"
-	"github.com/ooyeku/grav-lsm/pkg/logging"
+	"github.com/ooyeku/grayv-lsm/pkg/config"
+	"github.com/ooyeku/grayv-lsm/pkg/logging"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
@@ -18,8 +18,8 @@ func init() {
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Manage Grav LSM configuration",
-	Long:  `View or edit the Grav LSM configuration settings.`,
+	Short: "Manage Grayv LSM configuration",
+	Long:  `View or edit the Grayv LSM configuration settings.`,
 }
 
 var configGetCmd = &cobra.Command{
@@ -45,6 +45,7 @@ func init() {
 func runConfigGet(cmd *cobra.Command, args []string) {
 	cfg, err := config.LoadConfig()
 	if err != nil {
+		// TODO: improve this
 		configLogger.Error(fmt.Sprintf("Error loading config: %v", err))
 		return
 	}

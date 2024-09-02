@@ -8,9 +8,9 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
-	Use:   "grav-lsm",
-	Short: "Grav LSM (Lifecycle Management)",
-	Long:  ` grav-lsm is a CLI tool for managing the lifecycle of Grav App.  Grav apps are lightweight backend components consising of a containerized database, a model/schema generator, and an orm system.`,
+	Use:   "grayv-lsm",
+	Short: "Grayv LSM (Lifecycle Management)",
+	Long:  ` grayv-lsm is a CLI tool for managing the lifecycle of Grayv App.  Grayv apps are lightweight backend components consising of a containerized database, a model/schema generator, and an orm system.`,
 }
 
 func Execute() {

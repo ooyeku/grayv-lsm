@@ -2,9 +2,9 @@ package lsm
 
 import (
 	"fmt"
-	"github.com/ooyeku/grav-lsm/embedded"
-	"github.com/ooyeku/grav-lsm/pkg/config"
-	"github.com/ooyeku/grav-lsm/pkg/logging"
+	"github.com/ooyeku/grayv-lsm/embedded"
+	"github.com/ooyeku/grayv-lsm/pkg/config"
+	"github.com/ooyeku/grayv-lsm/pkg/logging"
 	"os"
 	"os/exec"
 	"path/filepath"

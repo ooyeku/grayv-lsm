@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/ooyeku/grav-lsm/internal/model"
+	"github.com/ooyeku/grayv-lsm/internal/model"
 )
 
 type TestModel struct {
