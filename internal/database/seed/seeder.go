@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ooyeku/grav-lsm/embedded"
+	"github.com/ooyeku/grayv-lsm/embedded"
 	"github.com/sirupsen/logrus"
 )
 

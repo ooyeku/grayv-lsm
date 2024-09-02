@@ -5,9 +5,9 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/ooyeku/grav-lsm/internal/orm"
-	"github.com/ooyeku/grav-lsm/pkg/config"
-	"github.com/ooyeku/grav-lsm/pkg/utils"
+	"github.com/ooyeku/grayv-lsm/internal/orm"
+	"github.com/ooyeku/grayv-lsm/pkg/config"
+	"github.com/ooyeku/grayv-lsm/pkg/utils"
 	"github.com/spf13/cobra"
 )
 

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ooyeku/grav-lsm/pkg/logging"
+	"github.com/ooyeku/grayv-lsm/pkg/logging"
 )
 
 // AppCreator is a type that represents an application creator. It has a logger property of type *logging.ColorfulLogger.

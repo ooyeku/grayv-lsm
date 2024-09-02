@@ -1,6 +1,5 @@
-# Grav LSM (Lifecycle Management)
-
-Grav LSM is a cli tool for managing the lifecycle of small backend components.  Quickly create a Postgres database, create models, generate code, and run migrations.  This is currently useful for quickly creating a new backend for a static site, or for use in prototyping.  While useful on its own, it will be accompanied by a set of other tools encompasing the Gravecosystem.
+# Grayv LSM (Lifecycle Management)
+   Grayv LSM is a cli tool for managing the lifecycle of small backend components.  Quickly create a Postgres database, create models, generate code, and run migrations.  This is currently useful for quickly creating a new backend for a static site, or for use in prototyping.  While useful on its own, it will be accompanied by a set of other tools encompasing the Grayv system.
 
 ## Features
 

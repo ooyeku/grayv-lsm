@@ -2,9 +2,9 @@ package lsm
 
 import (
 	"fmt"
-	"github.com/ooyeku/grav-lsm/embedded"
-	"github.com/ooyeku/grav-lsm/pkg/config"
-	"github.com/ooyeku/grav-lsm/pkg/logging"
+	"github.com/ooyeku/grayv-lsm/embedded"
+	"github.com/ooyeku/grayv-lsm/pkg/config"
+	"github.com/ooyeku/grayv-lsm/pkg/logging"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -63,6 +63,16 @@ func (dm *DBLifecycleManager) setEnvVars() {
 		dm.logger.WithError(err).Error("failed to set environment variable DB_NAME")
 		return
 	}
+	err = os.Setenv("DB_CONTAINER_NAME", dm.config.Database.ContainerName)
+	if err != nil {
+		dm.logger.WithError(err).Error("failed to set environment variable DB_CONTAINER_NAME")
+		return
+	}
+	err = os.Setenv("DB_IMAGE", dm.config.Database.Image)
+	if err != nil {
+		dm.logger.WithError(err).Error("failed to set environment variable DB_IMAGE")
+		return
+	}
 }
 
 // fileExists checks if a file exists in the filesystem.
@@ -105,23 +115,28 @@ func (dm *DBLifecycleManager) BuildImage() error {
 		}
 	}
 
-	tempDir, err := os.MkdirTemp("", "gravorm-db-build")
+	tempDir, err := os.MkdirTemp("", "grayv-db-build")
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func(path string) {
+		err := os.RemoveAll(path)
+		if err != nil {
+			log.WithError(err).Error("failed to remove temp directory")
+		}
+	}(tempDir)
 
 	if err := os.WriteFile(filepath.Join(tempDir, "Dockerfile"), []byte(newDockerfileContent.String()), 0644); err != nil {
 		return fmt.Errorf("failed to write Dockerfile to temp directory: %w", err)
 	}
 
-	buildCommand := fmt.Sprintf("docker build -t gravorm-db %s", tempDir)
+	buildCommand := fmt.Sprintf("docker build -t %s %s", dm.config.Database.Image, tempDir)
 	output, err := dm.runCommand(buildCommand)
 	if err != nil {
 		return fmt.Errorf("failed to build the database docker image: %v\nOutput: %s", err, output)
 	}
 
-	log.Info("Database Docker image built successfully.")
+	log.Infof("Database Docker image %s built successfully.", dm.config.Database.Image)
 	return nil
 }
 
@@ -132,48 +147,47 @@ func (dm *DBLifecycleManager) BuildImage() error {
 // It verifies that the container is running and that the environment variables are set correctly inside the container.
 // Returns an error if any step fails.
 func (dm *DBLifecycleManager) StartContainer() error {
-	dm.setEnvVars()
-	log.Info("Starting the database Docker container...")
+	log.Infof("Starting the database Docker container %s...", dm.config.Database.ContainerName)
 
 	// Check if the container already exists
-	output, _ := dm.runCommand(fmt.Sprintf("docker ps -aq -f name=%s", dm.containerName))
+	output, _ := dm.runCommand(fmt.Sprintf("docker ps -aq -f name=%s", dm.config.Database.ContainerName))
 	if output != "" {
-		log.Infof("Container %s already exists. Removing it...", dm.containerName)
-		_, err := dm.runCommand(fmt.Sprintf("docker rm -f %s", dm.containerName))
+		log.Infof("Container %s already exists. Removing it...", dm.config.Database.ContainerName)
+		_, err := dm.runCommand(fmt.Sprintf("docker rm -f %s", dm.config.Database.ContainerName))
 		if err != nil {
 			return fmt.Errorf("failed to remove existing container: %v", err)
 		}
 	}
 
 	// Check if the image exists locally
-	output, _ = dm.runCommand("docker images -q gravorm-db")
+	output, _ = dm.runCommand(fmt.Sprintf("docker images -q %s", dm.config.Database.Image))
 	if output == "" {
-		return fmt.Errorf("docker image gravorm-db not found. Please build the image first")
+		return fmt.Errorf("docker image %s not found. Please build the image first", dm.config.Database.Image)
 	}
 
 	// Start the Docker container
-	startCommand := fmt.Sprintf("docker run -d --name %s -e POSTGRES_USER=%s -e POSTGRES_PASSWORD=%s -e POSTGRES_DB=%s -p 5432:5432 gravorm-db",
-		dm.containerName, dm.config.Database.User, dm.config.Database.Password, dm.config.Database.Name)
+	startCommand := fmt.Sprintf("docker run -d --name %s -e POSTGRES_USER=%s -e POSTGRES_PASSWORD=%s -e POSTGRES_DB=%s -p 5432:5432 %s",
+		dm.config.Database.ContainerName, dm.config.Database.User, dm.config.Database.Password, dm.config.Database.Name, dm.config.Database.Image)
 	output, err := dm.runCommand(startCommand)
 	if err != nil {
 		return fmt.Errorf("failed to start the database docker container: %v\nOutput: %s", err, output)
 	}
 
-	log.Info("Database Docker container started successfully.")
+	log.Infof("Database Docker container %s started successfully.", dm.config.Database.ContainerName)
 
 	// Verify the container is running
-	output, err = dm.runCommand("docker ps -q -f name=gravorm-db")
+	output, err = dm.runCommand(fmt.Sprintf("docker ps -q -f name=%s", dm.config.Database.ContainerName))
 	if err != nil || output == "" {
-		return fmt.Errorf("database Docker container is not running.")
+		return fmt.Errorf("database Docker container is not running")
 	}
 
 	// Verify environment variables inside the container
-	output, err = dm.runCommand("docker exec gravorm-db env | grep POSTGRES")
+	output, err = dm.runCommand(fmt.Sprintf("docker exec %s env | grep POSTGRES", dm.containerName))
 	if err != nil {
 		return fmt.Errorf("failed to verify environment variables in the container: %v\nOutput: %s", err, output)
 	}
 
-	log.Info("Environment variables are set correctly in the container.")
+	log.Infof("Environment variables are set correctly in the container %s.", dm.containerName)
 	return nil
 }
 
@@ -181,12 +195,12 @@ func (dm *DBLifecycleManager) StartContainer() error {
 // It returns an error if it fails to stop the container, along with the output of the command.
 // If the container is stopped successfully, it logs a success message and returns nil.
 func (dm *DBLifecycleManager) StopContainer() error {
-	log.Info("Stopping the database Docker container...")
+	log.Infof("Stopping the database Docker container %s...", dm.containerName)
 	output, err := dm.runCommand(fmt.Sprintf("docker stop %s", dm.containerName))
 	if err != nil {
 		return fmt.Errorf("failed to stop the database Docker container: %v\nOutput: %s", err, output)
 	}
-	log.Info("Database Docker container stopped successfully.")
+	log.Infof("Database Docker container %s stopped successfully.", dm.containerName)
 	return nil
 }
 
@@ -194,12 +208,12 @@ func (dm *DBLifecycleManager) StopContainer() error {
 // to remove the container. If the command fails, it returns an error with the failure message.
 // Otherwise, it logs a success message and returns nil.
 func (dm *DBLifecycleManager) RemoveContainer() error {
-	log.Info("Removing the database Docker container...")
-	output, err := dm.runCommand(fmt.Sprintf("docker rm %s", dm.containerName))
+	log.Infof("Removing the database Docker container %s...", dm.config.Database.ContainerName)
+	output, err := dm.runCommand(fmt.Sprintf("docker rm %s", dm.config.Database.ContainerName))
 	if err != nil {
 		return fmt.Errorf("failed to remove the database Docker container: %v\nOutput: %s", err, output)
 	}
-	log.Info("Database Docker container removed successfully.")
+	log.Infof("Database Docker container %s removed successfully.", dm.config.Database.ContainerName)
 	return nil
 }
 
@@ -212,7 +226,7 @@ func (dm *DBLifecycleManager) RemoveContainer() error {
 // The function uses Docker CLI commands to check the status.
 func (dm *DBLifecycleManager) GetStatus() (string, error) {
 	// Check if the container exists
-	output, err := dm.runCommand(fmt.Sprintf("docker ps -a --filter name=%s --format '{{.Status}}'", dm.containerName))
+	output, err := dm.runCommand(fmt.Sprintf("docker ps -a --filter name=%s --format '{{.Status}}'", dm.config.Database.ContainerName))
 	if err != nil {
 		log.WithError(err).Error("failed to get the status of the database Docker container")
 		return "", fmt.Errorf("failed to get the status of the database Docker container: %v", err)
@@ -220,12 +234,12 @@ func (dm *DBLifecycleManager) GetStatus() (string, error) {
 
 	output = strings.TrimSpace(output)
 	if output == "" {
-		log.Info("container does not exist")
-		return "container does not exist", nil
+		log.Infof("Container %s does not exist", dm.config.Database.ContainerName)
+		return fmt.Sprintf("container %s does not exist", dm.config.Database.ContainerName), nil
 	}
 
 	// Check if the container is running
-	isRunning, err := dm.runCommand(fmt.Sprintf("docker inspect -f '{{.State.Running}}' %s", dm.containerName))
+	isRunning, err := dm.runCommand(fmt.Sprintf("docker inspect -f '{{.State.Running}}' %s", dm.config.Database.ContainerName))
 	if err != nil {
 		log.WithError(err).Error("failed to inspect the database Docker container")
 		return "", fmt.Errorf("failed to inspect the database Docker container: %v", err)
@@ -233,11 +247,11 @@ func (dm *DBLifecycleManager) GetStatus() (string, error) {
 
 	isRunning = strings.TrimSpace(isRunning)
 	if isRunning == "true" {
-		status := fmt.Sprintf("Container is running. Status: %s", output)
+		status := fmt.Sprintf("Container %s is running. Status: %s", dm.config.Database.ContainerName, output)
 		log.Info(status)
 		return status, nil
 	} else {
-		status := fmt.Sprintf("Container is not running. Status: %s", output)
+		status := fmt.Sprintf("Container %s is not running. Status: %s", dm.config.Database.ContainerName, output)
 		log.Info(status)
 		return status, nil
 	}
