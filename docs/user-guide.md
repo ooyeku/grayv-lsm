@@ -1,10 +1,10 @@
-# Grav LSM User Guide
+# Grayv LSM User Guide
 
-Grav LSM (Lifecycle Management) is a CLI tool for managing the lifecycle of Grav Apps. Grav apps are lightweight backend components consisting of a containerized database, a model/schema generator, and an ORM system.
+Grayv LSM (Lifecycle Management) is a CLI tool for managing the lifecycle of Grayv Apps. Grayv apps are lightweight backend components consisting of a containerized database, a model/schema generator, and an ORM system.
 
 ## Table of Contents
 
-- [Grav LSM User Guide](#grav-lsm-user-guide)
+- [Gryav LSM User Guide](#grav-lsm-user-guide)
   - [Table of Contents](#table-of-contents)
   - [1. Installation](#1-installation)
   - [2. Configuration](#2-configuration)
@@ -16,18 +16,18 @@ Grav LSM (Lifecycle Management) is a CLI tool for managing the lifecycle of Grav
 
 ## 1. Installation
 
-To install Grav LSM, follow these steps:
+To install Grayv LSM, follow these steps:
 
 1. Ensure you have Go installed on your system.
-2. Run the following command to install Grav LSM:
+2. Run the following command to install Grayv LSM:
    ```
-   go install github.com/ooyeku/grav-lsm@latest
+   go install github.com/ooyeku/grayv-lsm@latest
    ```
-3. The `grav-lsm` command should now be available in your terminal.
+3. The `grayv-lsm` command should now be available in your terminal.
 
 ## 2. Configuration
 
-Grav LSM uses a configuration file to manage database and server settings. The default configuration is embedded in the application, but you can override it by creating a `config.json` file in the same directory as the executable.
+Grayv LSM uses a configuration file to manage database and server settings. The default configuration is embedded in the application, but you can override it by creating a `config.json` file in the same directory as the executable.
 
 Example `config.json`:
 
@@ -57,134 +57,134 @@ Configuration file can also be set using environment variables. The following en
 Furthermore, the config command can be used to get and set the config values.
 
 ```
-grav-lsm config get database.host
-grav-lsm config set database.host 127.0.0.1
+grayv-lsm config get database.host
+grayv-lsm config set database.host 127.0.0.1
 ```
 
 
 ## 3. Managing Apps
 
-Grav LSM allows you to create, list, and delete Grav apps.
+Grayv LSM allows you to create, list, and delete Grav apps.
 
 - Create a new app:
   ```
-  grav-lsm app create myapp
+  grayv-lsm app create myapp
   ```
 
 - List all apps:
   ```
-  grav-lsm app list
+  grayv-lsm app list
   ```
 
 - Delete an app:
   ```
-  grav-lsm app delete myapp
+  grayv-lsm app delete myapp
   ```
 
 ## 4. Database Management
 
-Grav LSM provides commands to manage the database lifecycle.
+Grayv LSM provides commands to manage the database lifecycle.
 
 - Build the database Docker image:
   ```
-  grav-lsm db build
+  grayv-lsm db build
   ```
 
 - Start the database container:
   ```
-  grav-lsm db start
+  grayv-lsm db start
   ```
 
 - Stop the database container:
   ```
-  grav-lsm db stop
+  grayv-lsm db stop
   ```
 
 - Remove the database container:
   ```
-  grav-lsm db remove
+  grayv-lsm db remove
   ```
 
 - Check database status:
   ```
-  grav-lsm db status
+  grayv-lsm db status
   ```
 
 - List database tables:
   ```
-  grav-lsm db list-tables
+  grayv-lsm db list-tables
   ```
 
 ## 5. Model Management
 
-Grav LSM allows you to create, update, and generate models.
+Grayv LSM allows you to create, update, and generate models.
 
 - Create a new model:
   ```
-  grav-lsm model create User --fields "name:string,email:string,age:int"
+  grayv-lsm model create User --fields "name:string,email:string,age:int"
   ```
 
 - Update an existing model:
   ```
-  grav-lsm model update User --add-fields "address:string" --remove-fields "age"
+  grayv-lsm model update User --add-fields "address:string" --remove-fields "age"
   ```
 
 - List all models:
   ```
-  grav-lsm model list
+  grayv-lsm model list
   ```
 
 - Generate Go code for a model:
   ```
-  grav-lsm model generate User --app myapp
+  grayv-lsm model generate User --app myapp
   ```
 
 ## 6. Migrations and Seeding
 
-Grav LSM supports database migrations and seeding.
+Grayv LSM supports database migrations and seeding.
 
 - Run migrations:
   ```
-  grav-lsm db migrate
+  grayv-lsm db migrate
   ```
 
 - Rollback migrations:
   ```
-  grav-lsm db rollback [steps]
+  grayv-lsm db rollback [steps]
   ```
 
 - Seed the database:
   ```
-  grav-lsm db seed
+  grayv-lsm db seed
   ```
 
 ## 7. ORM Management
 
-Grav LSM allows you to manage the ORM system.
+Grayv LSM allows you to manage the ORM system.
 
 - Create a new user:
   ```
-  grav-lsm orm create-user --username "admin" --email "admin@example.com" --password "admin"
+  grayv-lsm orm create-user --username "admin" --email "admin@example.com" --password "admin"
   ```
 
 - List all users:
   ```
-  grav-lsm orm list-users
+  grayv-lsm orm list-users
   ```
 
 - Delete a user:
   ```
-  grav-lsm orm delete-user --id 1
+  grayv-lsm orm delete-user --id 1
   ```
 
 - Update a user:
   ```
-  grav-lsm orm update-user --id 1 --username "admin123" --email "admin123@example.com"
+  grayv-lsm orm update-user --id 1 --username "admin123" --email "admin123@example.com"
   ```
 
 - Raw SQL query:
   ```
-  grav-lsm orm query "SELECT * FROM users"
+  grayv-lsm orm query "SELECT * FROM users"
   ```
 
-Remember to run `grav-lsm --help` or `grav-lsm [command] --help` for more information on available commands and their usage.
+Remember to run `grayv-lsm --help` or `grayv-lsm [command] --help` for more information on available commands and their usage.
