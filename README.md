@@ -14,7 +14,7 @@
 Ensure you have Go installed on your system, then run:
 
 ```bash
-go install github.com/ooyeku/grayv-lsm
+go install github.com/ooyeku/grayv-lsm@latest
 ```
 
 Ensure $GOPATH/bin is in your $PATH.
@@ -26,28 +26,28 @@ Ensure $GOPATH/bin is in your $PATH.
 
 1. Create a new Grav app:
    ```bash
-   grav-lsm app create myapp
+   grayv-lsm app create myapp
    ```
 
 2. Build and start the database:
    ```bash
-   grav-lsm db build
-   grav-lsm db start
+   grayv-lsm db build
+   grayv-lsm db start
    ```
 
 3. Create a model:
    ```bash
-   grav-lsm model create User --fields "name:string,email:string,age:int"
+   grayv-lsm model create User --fields "name:string,email:string,age:int"
    ```
 
 4. Generate model code:
    ```bash
-   grav-lsm model generate User --app myapp
+   grayv-lsm model generate User --app myapp
    ```
 
 5. Run migrations:
    ```bash
-   grav-lsm db migrate
+   grayv-lsm db migrate
    ```
 
 ## Configuration
