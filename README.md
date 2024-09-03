@@ -14,7 +14,7 @@
 Ensure you have Go installed on your system, then run:
 
 ```bash
-go install github.com/ooyeku/grav-lsm
+go install github.com/ooyeku/grayv-lsm
 ```
 
 Ensure $GOPATH/bin is in your $PATH.
