@@ -62,7 +62,7 @@ Grav LSM uses a `config.json` file for configuration. You can create this file i
         "Port": 5432,
         "User": "postgres",
         "Password": "postgres",
-        "Name": "gravlsm",
+        "Name": "grayv-db",
         "SSLMode": "disable"
     }
 }
