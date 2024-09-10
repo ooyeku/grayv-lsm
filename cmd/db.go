@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 
+	"fmt"
 	"github.com/ooyeku/grayv-lsm/internal/database/lsm"
 	"github.com/ooyeku/grayv-lsm/internal/database/migration"
 	"github.com/ooyeku/grayv-lsm/internal/database/seed"
@@ -30,9 +31,9 @@ func init() {
 	cfg, err = config.LoadConfig()
 	if err != nil {
 		log.WithError(err).Error("Error loading config")
-		return
+	} else {
+		dbManager = lsm.NewDBLifecycleManager(cfg)
 	}
-	dbManager = lsm.NewDBLifecycleManager(cfg)
 }
 
 var dbCmd = &cobra.Command{
@@ -135,26 +136,13 @@ var seedCmd = &cobra.Command{
 	Use:   "seed",
 	Short: "Seed the database with initial data",
 	Run: func(cmd *cobra.Command, args []string) {
-		conn, err := orm.NewConnection(&cfg.Database)
-		if err != nil {
-			log.WithError(err).Error("Error connecting to database")
-			return
-		}
-		defer func(conn *orm.Connection) {
-			err := conn.Close()
-			if err != nil {
-				log.WithError(err).Error("Error closing database connection")
+		err := withDBConnection(func(conn *orm.Connection) error {
+			seeder := seed.NewSeeder(conn.GetDB())
+			if err := seeder.LoadSeeds(); err != nil {
+				return fmt.Errorf("error loading seeds: %w", err)
 			}
-		}(conn)
-
-		seeder := seed.NewSeeder(conn.GetDB())
-		err = seeder.LoadSeeds()
-		if err != nil {
-			log.WithError(err).Error("Error loading seeds")
-			return
-		}
-
-		err = seeder.Seed()
+			return seeder.Seed()
+		})
 		if err != nil {
 			log.WithError(err).Error("Error seeding database")
 		} else {
@@ -282,4 +270,19 @@ func init() {
 	dbCmd.AddCommand(rollbackCmd)
 	dbCmd.AddCommand(listTablesCmd)
 	RootCmd.AddCommand(dbCmd)
+}
+
+func withDBConnection(action func(*orm.Connection) error) error {
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("error loading config: %w", err)
+	}
+
+	conn, err := orm.NewConnection(&cfg.Database)
+	if err != nil {
+		return fmt.Errorf("error connecting to database: %w", err)
+	}
+	defer conn.Close()
+
+	return action(conn)
 }
