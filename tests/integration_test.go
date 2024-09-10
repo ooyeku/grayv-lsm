@@ -12,6 +12,7 @@ import (
 	"github.com/ooyeku/grayv-lsm/cmd"
 	"github.com/ooyeku/grayv-lsm/internal/orm"
 	"github.com/ooyeku/grayv-lsm/pkg/config"
+	log "github.com/ooyeku/grayv-lsm/pkg/logging"
 )
 
 func TestMain(m *testing.M) {
@@ -145,7 +146,8 @@ func waitForDatabaseReady() error {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
 
-	for i := 0; i < 60; i++ {
+	log.NewColorfulLogger().Info("Waiting for database to become ready...")
+	for i := 0; i < 30; i++ {
 		conn, err := orm.NewConnection(&cfg.Database)
 		if err == nil {
 			defer conn.Close()
@@ -154,10 +156,12 @@ func waitForDatabaseReady() error {
 			if err == nil {
 				// Drop the test table
 				_, _ = conn.GetDB().Exec("DROP TABLE test_table")
+				log.NewColorfulLogger().Info("Database is ready")
 				return nil
 			}
 		}
-		time.Sleep(1 * time.Second)
+		log.NewColorfulLogger().Infof("Attempt %d: Database not ready yet, waiting...", i+1)
+		time.Sleep(500 * time.Millisecond)
 	}
 	return fmt.Errorf("database did not become ready in time")
 }
