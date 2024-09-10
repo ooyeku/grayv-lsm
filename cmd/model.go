@@ -60,7 +60,7 @@ func init() {
 }
 
 func runCreateModel(cmd *cobra.Command, args []string) {
-	modelName := args[0]
+	modelName := sanitizeIdentifier(args[0])
 	fields, _ := cmd.Flags().GetStringSlice("fields")
 
 	modelFields, err := parseFields(fields)
@@ -93,7 +93,7 @@ func runCreateModel(cmd *cobra.Command, args []string) {
 }
 
 func runUpdateModel(cmd *cobra.Command, args []string) {
-	modelName := args[0]
+	modelName := sanitizeIdentifier(args[0])
 	addFields, _ := cmd.Flags().GetStringSlice("add-fields")
 	removeFields, _ := cmd.Flags().GetStringSlice("remove-fields")
 
@@ -255,7 +255,7 @@ func parseFields(fields []string) ([]model.Field, error) {
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid field format: %s", field)
 		}
-		name := parts[0]
+		name := sanitizeIdentifier(parts[0])
 		fieldType := parts[1]
 		tag := fmt.Sprintf(`json:"%s"`, strings.ToLower(name))
 		isNull := false
