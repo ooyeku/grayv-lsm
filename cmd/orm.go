@@ -66,6 +66,15 @@ func init() {
 
 	deleteUserCmd.Flags().Int("id", 0, "ID of the user to delete")
 	deleteUserCmd.MarkFlagRequired("id")
+
+	createUserCmd.Flags().String("username", "", "Username for the new user")
+	createUserCmd.Flags().String("email", "", "Email for the new user")
+	createUserCmd.Flags().String("password", "", "Password for the new user")
+	createUserCmd.MarkFlagRequired("username")
+	createUserCmd.MarkFlagRequired("email")
+	createUserCmd.MarkFlagRequired("password")
+
+	// ... (existing code)
 }
 
 func runQuery(cmd *cobra.Command, args []string) {
