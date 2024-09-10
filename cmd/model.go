@@ -9,9 +9,8 @@ import (
 	"github.com/ooyeku/grayv-lsm/internal/orm"
 	"github.com/ooyeku/grayv-lsm/pkg/config"
 	"github.com/spf13/cobra"
+	"regexp"
 )
-
-var modelManager *model.ModelManager
 
 var modelCmd = &cobra.Command{
 	Use:   "model",
@@ -46,7 +45,6 @@ var generateModelCmd = &cobra.Command{
 }
 
 func init() {
-	modelManager = model.NewModelManager()
 
 	createModelCmd.Flags().StringSlice("fields", []string{}, "Comma-separated list of fields in the format name:type")
 	updateModelCmd.Flags().StringSlice("add-fields", []string{}, "Comma-separated list of fields to add in the format name:type")
@@ -308,4 +306,9 @@ func getDBConnection() (*orm.Connection, error) {
 	}
 
 	return conn, nil
+}
+
+func sanitizeIdentifier(identifier string) string {
+	// Remove any characters that aren't alphanumeric or underscores
+	return regexp.MustCompile(`[^a-zA-Z0-9_]+`).ReplaceAllString(identifier, "")
 }
