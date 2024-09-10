@@ -88,15 +88,18 @@ func (m *Migrator) LoadMigrations() error {
 		return fmt.Errorf("failed to read embedded migrations directory: %w", err)
 	}
 
+	var loadErrors []error
 	for _, entry := range entries {
 		if filepath.Ext(entry.Name()) == ".sql" {
 			migrationContent, err := embedded.EmbeddedFiles.ReadFile(filepath.Join("migrations", entry.Name()))
 			if err != nil {
-				return fmt.Errorf("failed to read migration file %s: %w", entry.Name(), err)
+				loadErrors = append(loadErrors, fmt.Errorf("failed to read migration file %s: %w", entry.Name(), err))
+				continue
 			}
 			migration, err := parseMigrationContent(entry.Name(), string(migrationContent))
 			if err != nil {
-				return fmt.Errorf("failed to parse migration file %s: %w", entry.Name(), err)
+				loadErrors = append(loadErrors, fmt.Errorf("failed to parse migration file %s: %w", entry.Name(), err))
+				continue
 			}
 			m.migrations = append(m.migrations, migration)
 		}
@@ -105,6 +108,10 @@ func (m *Migrator) LoadMigrations() error {
 	sort.Slice(m.migrations, func(i, j int) bool {
 		return m.migrations[i].Version < m.migrations[j].Version
 	})
+
+	if len(loadErrors) > 0 {
+		return fmt.Errorf("errors occurred while loading migrations: %v", loadErrors)
+	}
 
 	return nil
 }
@@ -196,18 +203,21 @@ func (m *Migrator) Rollback(steps int) error {
 	return nil
 }
 
+const migrationsTableName = "migrations"
+
 // createMigrationsTable creates a table called "migrations" in the database if it does not exist already.
 // The table has three columns: "version" of type BIGINT and primary key, "name" of type TEXT and not null,
 // and "applied_at" of type TIMESTAMP WITH TIME ZONE with a default value of the current timestamp.
 // This method returns an error if there was a problem executing the SQL statement to create the table.
 func (m *Migrator) createMigrationsTable() error {
-	_, err := m.db.Exec(`
-		CREATE TABLE IF NOT EXISTS migrations (
-			version BIGINT PRIMARY KEY,
-			name TEXT NOT NULL,
-			applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-		)
-	`)
+	query := fmt.Sprintf(`
+        CREATE TABLE IF NOT EXISTS %s (
+            version BIGINT PRIMARY KEY,
+            name TEXT NOT NULL,
+            applied_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+        )
+    `, migrationsTableName)
+	_, err := m.db.Exec(query)
 	return err
 }
 
@@ -290,6 +300,10 @@ func (m *Migrator) getAppliedMigrations() ([]int64, error) {
 			return nil, fmt.Errorf("error scanning migration row: %w", err)
 		}
 		appliedMigrations = append(appliedMigrations, version)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating over migration rows: %w", err)
 	}
 
 	return appliedMigrations, nil

@@ -1,6 +1,7 @@
 package lsm
 
 import (
+	"context"
 	"fmt"
 	"github.com/ooyeku/grayv-lsm/embedded"
 	"github.com/ooyeku/grayv-lsm/pkg/config"
@@ -9,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // log is a variable of type logrus.Logger. It is used for logging messages and errors throughout the program.
@@ -47,32 +49,22 @@ func NewDBLifecycleManager(cfg *config.Config) *DBLifecycleManager {
 // setEnvVars sets the environment variables for the database connection. It uses the values from the `config.Database`
 // field of the `DBLifecycleManager` instance to set the `DB_USER`, `DB_PASSWORD`, and `DB_NAME` environment variables.
 // If setting any of these variables fails, an error is logged and the method returns without further action.
-func (dm *DBLifecycleManager) setEnvVars() {
-	err := os.Setenv("DB_USER", dm.config.Database.User)
-	if err != nil {
-		dm.logger.WithError(err).Error("failed to set environment variable DB_USER")
-		return
+func (dm *DBLifecycleManager) setEnvVars() error {
+	vars := map[string]string{
+		"DB_USER":           dm.config.Database.User,
+		"DB_PASSWORD":       dm.config.Database.Password,
+		"DB_NAME":           dm.config.Database.Name,
+		"DB_CONTAINER_NAME": dm.config.Database.ContainerName,
+		"DB_IMAGE":          dm.config.Database.Image,
 	}
-	err = os.Setenv("DB_PASSWORD", dm.config.Database.Password)
-	if err != nil {
-		dm.logger.WithError(err).Error("failed to set environment variable DB_PASSWORD")
-		return
+
+	for key, value := range vars {
+		if err := os.Setenv(key, value); err != nil {
+			return fmt.Errorf("failed to set environment variable %s: %w", key, err)
+		}
 	}
-	err = os.Setenv("DB_NAME", dm.config.Database.Name)
-	if err != nil {
-		dm.logger.WithError(err).Error("failed to set environment variable DB_NAME")
-		return
-	}
-	err = os.Setenv("DB_CONTAINER_NAME", dm.config.Database.ContainerName)
-	if err != nil {
-		dm.logger.WithError(err).Error("failed to set environment variable DB_CONTAINER_NAME")
-		return
-	}
-	err = os.Setenv("DB_IMAGE", dm.config.Database.Image)
-	if err != nil {
-		dm.logger.WithError(err).Error("failed to set environment variable DB_IMAGE")
-		return
-	}
+
+	return nil
 }
 
 // fileExists checks if a file exists in the filesystem.
@@ -91,8 +83,14 @@ func (dm *DBLifecycleManager) fileExists(name string) bool {
 
 // Update the runCommand method signature
 func (dm *DBLifecycleManager) runCommand(command string, args ...interface{}) (string, error) {
-	cmd := exec.Command("sh", "-c", fmt.Sprintf(command, args...))
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "sh", "-c", fmt.Sprintf(command, args...))
 	output, err := cmd.CombinedOutput()
+	if ctx.Err() == context.DeadlineExceeded {
+		return "", fmt.Errorf("command timed out")
+	}
 	return string(output), err
 }
 
@@ -119,12 +117,11 @@ func (dm *DBLifecycleManager) BuildImage() error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer func(path string) {
-		err := os.RemoveAll(path)
-		if err != nil {
+	defer func() {
+		if err := os.RemoveAll(tempDir); err != nil {
 			log.WithError(err).Error("failed to remove temp directory")
 		}
-	}(tempDir)
+	}()
 
 	if err := os.WriteFile(filepath.Join(tempDir, "Dockerfile"), []byte(newDockerfileContent.String()), 0644); err != nil {
 		return fmt.Errorf("failed to write Dockerfile to temp directory: %w", err)
@@ -182,12 +179,12 @@ func (dm *DBLifecycleManager) StartContainer() error {
 	}
 
 	// Verify environment variables inside the container
-	output, err = dm.runCommand(fmt.Sprintf("docker exec %s env | grep POSTGRES", dm.containerName))
+	output, err = dm.runCommand(fmt.Sprintf("docker exec %s env | grep POSTGRES", dm.config.Database.ContainerName))
 	if err != nil {
 		return fmt.Errorf("failed to verify environment variables in the container: %v\nOutput: %s", err, output)
 	}
 
-	log.Infof("Environment variables are set correctly in the container %s.", dm.containerName)
+	log.Infof("Environment variables are set correctly in the container %s.", dm.config.Database.ContainerName)
 	return nil
 }
 

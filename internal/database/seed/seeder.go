@@ -2,6 +2,7 @@ package seed
 
 import (
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -40,16 +41,16 @@ func NewSeeder(db *sql.DB) *Seeder {
 func (s *Seeder) LoadSeeds() error {
 	entries, err := embedded.EmbeddedFiles.ReadDir("seeds")
 	if err != nil {
-		logrus.WithError(err).Error("failed to read embedded seeds directory")
-		return err
+		return fmt.Errorf("failed to read embedded seeds directory: %w", err)
 	}
 
+	var loadErrors []error
 	for _, entry := range entries {
 		if filepath.Ext(entry.Name()) == ".sql" {
 			seedContent, err := embedded.EmbeddedFiles.ReadFile(filepath.Join("seeds", entry.Name()))
 			if err != nil {
-				logrus.WithError(err).Errorf("failed to read seed file %s", entry.Name())
-				return err
+				loadErrors = append(loadErrors, fmt.Errorf("failed to read seed file %s: %w", entry.Name(), err))
+				continue
 			}
 			seed := &Seed{
 				Name: entry.Name(),
@@ -59,10 +60,13 @@ func (s *Seeder) LoadSeeds() error {
 		}
 	}
 
-	// Sort seeds by filename to ensure consistent order
 	sort.Slice(s.seeds, func(i, j int) bool {
 		return s.seeds[i].Name < s.seeds[j].Name
 	})
+
+	if len(loadErrors) > 0 {
+		return fmt.Errorf("errors occurred while loading seeds: %v", loadErrors)
+	}
 
 	return nil
 }
@@ -93,41 +97,28 @@ func (s *Seeder) executeSeed(seed *Seed) error {
 		logrus.WithError(err).Error("error starting transaction")
 		return err
 	}
+	defer tx.Rollback()
 
-	if _, err := tx.Exec(seed.SQL); err != nil {
-		err := tx.Rollback()
-		if err != nil {
+	// Split the SQL into individual statements
+	statements := strings.Split(seed.SQL, ";")
+
+	for _, stmt := range statements {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue
+		}
+
+		if _, err := tx.Exec(stmt); err != nil {
+			logrus.WithError(err).Errorf("error executing seed %s", seed.Name)
 			return err
 		}
-		logrus.WithError(err).Errorf("error executing seed %s", seed.Name)
-		return err
 	}
 
 	if err := tx.Commit(); err != nil {
-		err := tx.Rollback()
-		if err != nil {
-			return err
-		}
 		logrus.WithError(err).Errorf("error committing seed %s", seed.Name)
 		return err
 	}
 
 	logrus.Infof("Executed seed: %s", seed.Name)
 	return nil
-}
-
-// parseSeedFile reads the contents of a seed file specified by the filename parameter,
-// and returns a Seed object containing the base filename as the Name property, and the trimmed
-// contents of the file as the SQL property. If an error occurs during file reading, the function
-// returns nil and the error.
-func parseSeedFile(filename string) (*Seed, error) {
-	content, err := embedded.EmbeddedFiles.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Seed{
-		Name: filepath.Base(filename),
-		SQL:  strings.TrimSpace(string(content)),
-	}, nil
 }
