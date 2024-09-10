@@ -49,6 +49,7 @@ func TestSaveConfig(t *testing.T) {
 			Name:          "test",
 			SSLMode:       "test",
 			ContainerName: "test-container",
+			Image:         "test-image",
 		},
 		Server: ServerConfig{
 			Host: "test",
