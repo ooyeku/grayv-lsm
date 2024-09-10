@@ -56,8 +56,6 @@ func init() {
 	ormCmd.AddCommand(listUsersCmd)
 	RootCmd.AddCommand(ormCmd)
 
-	// Existing flags for createUserCmd...
-
 	updateUserCmd.Flags().Int("id", 0, "ID of the user to update")
 	updateUserCmd.Flags().String("username", "", "New username for the user")
 	updateUserCmd.Flags().String("email", "", "New email for the user")
@@ -73,8 +71,6 @@ func init() {
 	createUserCmd.MarkFlagRequired("username")
 	createUserCmd.MarkFlagRequired("email")
 	createUserCmd.MarkFlagRequired("password")
-
-	// ... (existing code)
 }
 
 func runQuery(cmd *cobra.Command, args []string) {
