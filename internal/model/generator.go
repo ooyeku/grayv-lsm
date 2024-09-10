@@ -2,6 +2,8 @@ package model
 
 import (
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,12 +36,13 @@ func ({{.Name | firstLetter}} *{{.Name}}) TableName() string {
 // The generated model file is saved in the specified output directory, or in the default "models" directory if no output directory is provided.
 // Returns an error if there is any issue parsing the template, creating the output directory, creating the file, executing the template, or any other related error.
 func GenerateModelFile(modelDef *ModelDefinition) error {
+	caser := cases.Title(language.English)
 	tmpl, err := template.New("model").Funcs(template.FuncMap{
 		"toLower": strings.ToLower,
 		"firstLetter": func(s string) string {
 			return strings.ToLower(s[:1])
 		},
-		"title": strings.Title,
+		"title": caser.String,
 	}).Parse(modelTemplate)
 	if err != nil {
 		return fmt.Errorf("error parsing template: %w", err)
