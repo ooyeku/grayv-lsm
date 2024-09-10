@@ -3,14 +3,16 @@ package lsm
 import (
 	"context"
 	"fmt"
-	"github.com/ooyeku/grayv-lsm/embedded"
-	"github.com/ooyeku/grayv-lsm/pkg/config"
-	"github.com/ooyeku/grayv-lsm/pkg/logging"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ooyeku/grayv-lsm/embedded"
+	"github.com/ooyeku/grayv-lsm/internal/orm"
+	"github.com/ooyeku/grayv-lsm/pkg/config"
+	"github.com/ooyeku/grayv-lsm/pkg/logging"
 )
 
 // log is a variable of type logrus.Logger. It is used for logging messages and errors throughout the program.
@@ -246,4 +248,25 @@ func (dm *DBLifecycleManager) GetStatus() (string, error) {
 		log.Info(status)
 		return status, nil
 	}
+}
+
+func (dm *DBLifecycleManager) InitializeDatabase() error {
+	initSQL, err := embedded.EmbeddedFiles.ReadFile("init.sql")
+	if err != nil {
+		return fmt.Errorf("failed to read init.sql: %v", err)
+	}
+
+	conn, err := orm.NewConnection(&dm.config.Database)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %v", err)
+	}
+	defer conn.Close()
+
+	_, err = conn.GetDB().Exec(string(initSQL))
+	if err != nil {
+		return fmt.Errorf("failed to execute init.sql: %v", err)
+	}
+
+	log.Info("Database initialized successfully")
+	return nil
 }
