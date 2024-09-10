@@ -128,7 +128,7 @@ func testDatabaseLifecycle(t *testing.T) {
 	}
 
 	// Set up the database schema
-	if err := setupDatabaseSchema(t); err != nil {
+	if err := setupDatabaseSchema(); err != nil {
 		t.Fatalf("Failed to set up database schema: %v", err)
 	}
 
@@ -147,9 +147,11 @@ func waitForDatabaseReady() error {
 	}
 
 	log.NewColorfulLogger().Info("Waiting for database to become ready...")
-	for i := 0; i < 30; i++ {
+	for i := 0; i < 60; i++ { // Increase to 60 attempts (30 seconds)
 		conn, err := orm.NewConnection(&cfg.Database)
-		if err == nil {
+		if err != nil {
+			log.NewColorfulLogger().Infof("Attempt %d: Connection error: %v", i+1, err)
+		} else {
 			defer conn.Close()
 			// Try to create a test table to ensure the database is ready
 			_, err := conn.GetDB().Exec("CREATE TABLE IF NOT EXISTS test_table (id SERIAL PRIMARY KEY)")
@@ -159,6 +161,7 @@ func waitForDatabaseReady() error {
 				log.NewColorfulLogger().Info("Database is ready")
 				return nil
 			}
+			log.NewColorfulLogger().Infof("Attempt %d: Table creation error: %v", i+1, err)
 		}
 		log.NewColorfulLogger().Infof("Attempt %d: Database not ready yet, waiting...", i+1)
 		time.Sleep(500 * time.Millisecond)
@@ -166,11 +169,11 @@ func waitForDatabaseReady() error {
 	return fmt.Errorf("database did not become ready in time")
 }
 
-func waitForDatabaseReadyBenchmark(b *testing.B) error {
+func waitForDatabaseReadyBenchmark() error {
 	return waitForDatabaseReady()
 }
 
-func setupDatabaseSchema(t *testing.T) error {
+func setupDatabaseSchema() error {
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
@@ -247,7 +250,7 @@ func testORMOperations(t *testing.T) {
 
 func setupDatabaseSchemaForBenchmark(b *testing.B) error {
 	// Reuse the existing setupDatabaseSchema function
-	return setupDatabaseSchema(&testing.T{})
+	return setupDatabaseSchema()
 }
 
 func BenchmarkDatabaseLifecycle(b *testing.B) {
@@ -265,7 +268,7 @@ func BenchmarkDatabaseLifecycle(b *testing.B) {
 		}
 
 		// Wait for the database to be ready
-		if err := waitForDatabaseReadyBenchmark(b); err != nil {
+		if err := waitForDatabaseReadyBenchmark(); err != nil {
 			b.Fatalf("Database failed to become ready: %v", err)
 		}
 

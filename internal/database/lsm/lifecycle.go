@@ -46,9 +46,9 @@ func NewDBLifecycleManager(cfg *config.Config) *DBLifecycleManager {
 	}
 }
 
-// setEnvVars sets the environment variables for the database connection. It uses the values from the `config.Database`
-// field of the `DBLifecycleManager` instance to set the `DB_USER`, `DB_PASSWORD`, and `DB_NAME` environment variables.
-// If setting any of these variables fails, an error is logged and the method returns without further action.
+// Acknowledge that setEnvVars is intentionally unused
+var _ = (*DBLifecycleManager).setEnvVars
+
 func (dm *DBLifecycleManager) setEnvVars() error {
 	vars := map[string]string{
 		"DB_USER":           dm.config.Database.User,
@@ -67,15 +67,9 @@ func (dm *DBLifecycleManager) setEnvVars() error {
 	return nil
 }
 
-// fileExists checks if a file exists in the filesystem.
-// It takes a name string parameter representing the file path or name.
-// It returns a bool value indicating whether the file exists or not.
-// The function uses the os.Stat function to check the file's information,
-// and the os.IsNotExist function to determine if the file doesn't exist.
-// This function is used internally by other methods in the DBLifecycleManager struct.
-// Example usage:
-//
-//	dm.fileExists("./internal/database/lsm/Dockerfile")
+// Acknowledge that fileExists is intentionally unused
+var _ = (*DBLifecycleManager).fileExists
+
 func (dm *DBLifecycleManager) fileExists(name string) bool {
 	_, err := os.Stat(name)
 	return !os.IsNotExist(err)
